@@ -53,6 +53,11 @@ export function App() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>({
+    email_leave_updates: true,
+    email_maintenance_urgent: true,
+    email_emergency_alerts: true,
+    email_attendance_low: true,
+    email_request_resolved: true,
     sms_leave_updates: true,
     sms_maintenance_urgent: true,
     sms_emergency_alerts: true,
