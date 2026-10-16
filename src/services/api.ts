@@ -69,6 +69,55 @@ export const api = {
     });
     return res.json();
   },
+  updateStudent: async (id: string, updates: Partial<Student>): Promise<Student> => {
+    const res = await fetch(`/api/students/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update student');
+    return res.json();
+  },
+
+  // Excel Unified Student Directory Import APIs
+  getImportPreview: async (): Promise<{ validation: any; sampleStudents: Student[] }> => {
+    const res = await fetch('/api/academic/import-preview');
+    if (!res.ok) throw new Error('Failed to load Excel import preview');
+    return res.json();
+  },
+  confirmExcelImport: async (): Promise<{ success: boolean; message: string; validation: any; totalStudents: number }> => {
+    const res = await fetch('/api/academic/import-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to confirm Excel import');
+    return res.json();
+  },
+  getImportSummary: async (): Promise<any> => {
+    const res = await fetch('/api/academic/import-summary');
+    return res.json();
+  },
+
+  // Monthly & Daily Attendance Summary
+  getMonthlyAttendanceSummary: async (params?: { semester_id?: string; section_id?: string; month?: string }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.semester_id) query.set('semester_id', params.semester_id);
+    if (params?.section_id) query.set('section_id', params.section_id);
+    if (params?.month) query.set('month', params.month);
+    const res = await fetch(`/api/attendance/monthly-summary?${query.toString()}`);
+    return res.json();
+  },
+
+  // Attendance Export Download URL Builder
+  getAttendanceExportUrl: (params?: { semester_id?: string; section_id?: string; date?: string; month?: string; format?: 'xlsx' | 'csv' }): string => {
+    const query = new URLSearchParams();
+    if (params?.semester_id) query.set('semester_id', params.semester_id);
+    if (params?.section_id) query.set('section_id', params.section_id);
+    if (params?.date) query.set('date', params.date);
+    if (params?.month) query.set('month', params.month);
+    if (params?.format) query.set('format', params.format);
+    return `/api/attendance/export?${query.toString()}`;
+  },
 
   // Staff
   getStaff: async (): Promise<Staff[]> => {

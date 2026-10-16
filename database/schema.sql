@@ -284,8 +284,14 @@ CREATE TABLE IF NOT EXISTS public.subjects (
   UNIQUE(course_id, semester_id, code)
 );
 
--- Extend Students table for dynamic academic mapping
+-- Extend Students table for dynamic academic mapping & unified Excel directory
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS register_number VARCHAR(50);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS admission_no VARCHAR(50);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS uucms_no VARCHAR(50);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS dob VARCHAR(50);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS source_program VARCHAR(50);
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS sl_no INT;
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS course_id UUID REFERENCES public.courses(id) ON DELETE SET NULL;
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS academic_year_id UUID REFERENCES public.academic_years(id) ON DELETE SET NULL;
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS semester_id UUID REFERENCES public.semesters(id) ON DELETE SET NULL;

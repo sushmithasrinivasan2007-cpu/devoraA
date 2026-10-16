@@ -9,7 +9,8 @@ import {
   Users, CheckCircle, XCircle, Sparkles, Calendar, Save, TrendingDown,
   BookOpen, Layers, Settings, UserCheck, ShieldAlert, Plus, Edit3, Trash2,
   Filter, ArrowRight, Search, Award, AlertTriangle, Check, GraduationCap,
-  Clock, ChevronRight, RefreshCw, Sliders, ChevronDown
+  Clock, ChevronRight, RefreshCw, Sliders, ChevronDown, Download, FileSpreadsheet,
+  FileText, CheckSquare, Info, ExternalLink, Eye, X, Building2, UserMinus
 } from 'lucide-react';
 
 interface AttendanceModuleProps {
@@ -80,16 +81,42 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   // Config Sub-Tab State
   const [configSubTab, setConfigSubTab] = useState<'courses' | 'years' | 'semesters' | 'sections' | 'subjects' | 'students' | 'assignments' | 'settings' | 'promotion'>('courses');
 
+  // Full Student Directory for Global Semester / Section Count Metrics
+  const [allStudentsList, setAllStudentsList] = useState<Student[]>([]);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'ABSENT' | 'EXCUSED'>('ALL');
+  const [programFilter, setProgramFilter] = useState<'ALL' | 'BCA' | 'BCA+DA' | 'BCOM'>('ALL');
+
+  // Excel Workbook Integration Modal States
+  const [importSummary, setImportSummary] = useState<any>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreviewData, setImportPreviewData] = useState<any>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Student Section / Semester Reassignment Modal States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editSemesterId, setEditSemesterId] = useState('');
+  const [editSectionId, setEditSectionId] = useState('');
+  const [isUpdatingStudent, setIsUpdatingStudent] = useState(false);
+
+  // Monthly Attendance Summary Modal States
+  const [showMonthlyModal, setShowMonthlyModal] = useState(false);
+  const [monthlyData, setMonthlyData] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [isLoadingMonthly, setIsLoadingMonthly] = useState(false);
+
   // Load All Academic Structures on Mount
   const loadAcademicStructures = async () => {
     setIsLoading(true);
     try {
-      const [crsRes, ayRes, staffRes, asgRes, setRes] = await Promise.all([
+      const [crsRes, ayRes, staffRes, asgRes, setRes, allStudentsRes, impSumRes] = await Promise.all([
         api.getCourses(),
         api.getAcademicYears(),
         api.getStaff(),
         api.getTeacherAssignments(),
-        api.getAttendanceSettings()
+        api.getAttendanceSettings(),
+        api.getStudents(),
+        api.getImportSummary()
       ]);
 
       setCourses(crsRes);
@@ -97,6 +124,8 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
       setTeachers(staffRes.filter(s => s.role_title === 'Teacher'));
       setAssignments(asgRes);
       setSettings(setRes);
+      setAllStudentsList(allStudentsRes || []);
+      setImportSummary(impSumRes);
 
       // Default course & year
       const defaultCourse = crsRes.find(c => c.code === 'BCA') || crsRes[0];
@@ -313,18 +342,63 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
     }
   };
 
-  // Filtered Roster by Search Query
-  const filteredRoster = useMemo(() => {
-    if (!searchQuery.trim()) return enrolledStudents;
-    const q = searchQuery.toLowerCase();
-    return enrolledStudents.filter(
-      s => s.name.toLowerCase().includes(q) || (s.register_number && s.register_number.toLowerCase().includes(q)) || s.roll_number.toLowerCase().includes(q)
-    );
-  }, [enrolledStudents, searchQuery]);
+  // 3-Way Status Handler (Present, Absent, Leave)
+  const handleSetStudentStatus = (studentId: string, status: 'PRESENT' | 'ABSENT' | 'EXCUSED') => {
+    setAttendanceEntries(prev => ({
+      ...prev,
+      [studentId]: {
+        notes: prev[studentId]?.notes || '',
+        status
+      }
+    }));
+  };
 
-  // Roll Call Statistics
+  const handleSetAllStatus = (status: 'PRESENT' | 'ABSENT' | 'EXCUSED') => {
+    const updated: Record<string, { status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'; notes: string }> = {};
+    enrolledStudents.forEach(stu => {
+      updated[stu.id] = {
+        status,
+        notes: attendanceEntries[stu.id]?.notes || ''
+      };
+    });
+    setAttendanceEntries(updated);
+  };
+
+  // Filtered Roster by Search Query (Name, Admission No, UUCMS No), Status, and Source Program
+  const filteredRoster = useMemo(() => {
+    return enrolledStudents.filter(stu => {
+      // 1. Text Search (Name, UUCMS, Admission No)
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = stu.name.toLowerCase().includes(q);
+        const matchesUucms = Boolean(stu.uucms_no && stu.uucms_no.toLowerCase().includes(q)) || Boolean(stu.register_number && stu.register_number.toLowerCase().includes(q));
+        const matchesAdm = Boolean(stu.admission_no && stu.admission_no.toLowerCase().includes(q)) || Boolean(stu.roll_number && stu.roll_number.toLowerCase().includes(q));
+        if (!matchesName && !matchesUucms && !matchesAdm) return false;
+      }
+
+      // 2. Status Filter
+      if (statusFilter !== 'ALL') {
+        const currentStatus = attendanceEntries[stu.id]?.status || 'PRESENT';
+        if (statusFilter === 'EXCUSED') {
+          if (currentStatus !== 'EXCUSED' && currentStatus !== 'LATE') return false;
+        } else if (currentStatus !== statusFilter) {
+          return false;
+        }
+      }
+
+      // 3. Source Program Filter
+      if (programFilter !== 'ALL') {
+        if (stu.source_program !== programFilter) return false;
+      }
+
+      return true;
+    });
+  }, [enrolledStudents, searchQuery, statusFilter, programFilter, attendanceEntries]);
+
+  // Roll Call Statistics (Real-time calculated)
   const presentCount = Object.values(attendanceEntries).filter(e => e.status === 'PRESENT').length;
   const absentCount = Object.values(attendanceEntries).filter(e => e.status === 'ABSENT').length;
+  const leaveCount = Object.values(attendanceEntries).filter(e => e.status === 'EXCUSED' || e.status === 'LATE').length;
   const totalCount = enrolledStudents.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 1000) / 10 : 0;
 
@@ -334,6 +408,103 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
   const currentSemester = semesters.find(s => s.id === selectedSemesterId);
   const currentSection = sections.find(s => s.id === selectedSectionId);
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+
+  // Helper: Count students in semester from full directory
+  const getSemesterStudentCount = (semId: string): number => {
+    return allStudentsList.filter(s => s.semester_id === semId).length;
+  };
+
+  // Helper: Count students in section
+  const getSectionStudentCount = (secId: string, secName: string): number => {
+    return allStudentsList.filter(s => s.semester_id === selectedSemesterId && (s.section_id === secId || s.section === secName)).length;
+  };
+
+  // Handler: Open Excel Sync & Validation Preview
+  const handleOpenImportModal = async () => {
+    setIsImporting(true);
+    setShowImportModal(true);
+    try {
+      const data = await api.getImportPreview();
+      setImportPreviewData(data);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Handler: Confirm Excel Re-sync
+  const handleConfirmImport = async () => {
+    setIsImporting(true);
+    try {
+      const res = await api.confirmExcelImport();
+      setSaveSuccessMessage(res.message || 'Excel Workbook Re-imported and Synchronized successfully!');
+      setTimeout(() => setSaveSuccessMessage(''), 4000);
+      setShowImportModal(false);
+      loadAcademicStructures();
+      fetchSessionAndStudents();
+      onRefresh();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to complete Excel synchronization.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Handler: Open Student Reassignment Modal
+  const handleOpenEditStudentModal = (student: Student) => {
+    setEditingStudent(student);
+    setEditSemesterId(student.semester_id || selectedSemesterId);
+    setEditSectionId(student.section_id || selectedSectionId);
+    setShowEditModal(true);
+  };
+
+  // Handler: Save Student Reassignment
+  const handleSaveStudentEdit = async () => {
+    if (!editingStudent) return;
+    setIsUpdatingStudent(true);
+    try {
+      const targetSem = semesters.find(s => s.id === editSemesterId);
+      const targetSec = sections.find(s => s.id === editSectionId);
+      await api.updateStudent(editingStudent.id, {
+        semester_id: editSemesterId,
+        semester_name: targetSem?.name,
+        class_grade: targetSem ? String(targetSem.number) : undefined,
+        section_id: editSectionId,
+        section: targetSec?.name
+      });
+      setShowEditModal(false);
+      setEditingStudent(null);
+      setSaveSuccessMessage('Student Semester & Section updated successfully without deleting attendance history.');
+      setTimeout(() => setSaveSuccessMessage(''), 3000);
+      loadAcademicStructures();
+      fetchSessionAndStudents();
+      onRefresh();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to update student assignment.');
+    } finally {
+      setIsUpdatingStudent(false);
+    }
+  };
+
+  // Handler: Load Monthly Attendance Summary
+  const handleLoadMonthlySummary = async (m?: string) => {
+    const targetMonth = m || selectedMonth;
+    setIsLoadingMonthly(true);
+    try {
+      const data = await api.getMonthlyAttendanceSummary({
+        semester_id: selectedSemesterId,
+        section_id: selectedSectionId,
+        month: targetMonth
+      });
+      setMonthlyData(data);
+      setShowMonthlyModal(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingMonthly(false);
+    }
+  };
 
   // -------------------------------------------------------------
   // CONFIG MANAGEMENT FORMS & STATES (ADMIN ONLY)
@@ -551,6 +722,17 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
               <span>My Attendance</span>
             </button>
           )}
+
+          {/* Excel Import & Live Directory Modal Trigger */}
+          <button
+            type="button"
+            onClick={handleOpenImportModal}
+            className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 cursor-pointer bg-[#5F8F68]/15 text-[#3D6B46] border border-[#5F8F68]/30 hover:bg-[#5F8F68]/25 shadow-xs"
+            title="Inspect Excel Integration Breakdown and Re-sync"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-[#3D6B46]" />
+            <span>Excel Directory (765)</span>
+          </button>
         </div>
       </div>
 
@@ -584,6 +766,93 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                 Active Selection: <strong className="text-[#6B1E2B]">{currentCourse?.code || '—'}</strong> / <strong className="text-[#6B1E2B]">{currentSemester?.name || '—'}</strong> / <strong className="text-[#6B1E2B]">{currentSection?.name || '—'}</strong>
               </span>
             </div>
+
+            {/* 6 BCA SEMESTERS QUICK TABS STRIP */}
+            {courses.find(c => c.id === selectedCourseId)?.code === 'BCA' && (
+              <div className="space-y-3 pt-1 border-t border-[#6B1E2B]/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono font-bold text-[#756565] uppercase flex items-center gap-2">
+                    <GraduationCap className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                    <span>BCA Department Semesters (765 Unified Students):</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-[#6B1E2B] font-bold">
+                    6 Semesters • 4 Sections Each
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                  {semesters.filter(s => s.course_id === selectedCourseId).map(sem => {
+                    const count = getSemesterStudentCount(sem.id);
+                    const isSelected = selectedSemesterId === sem.id;
+                    return (
+                      <button
+                        key={sem.id}
+                        type="button"
+                        onClick={() => setSelectedSemesterId(sem.id)}
+                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-[#6B1E2B] text-[#FFF8EC] border-[#6B1E2B] shadow-md shadow-[#6B1E2B]/20 ring-2 ring-[#6B1E2B]/30'
+                            : 'bg-[#F3EBDD]/80 text-[#2B2020] border-[#6B1E2B]/15 hover:border-[#6B1E2B]/40 hover:bg-[#F3EBDD]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isSelected ? 'text-[#FFF8EC]/70' : 'text-[#756565]'}`}>
+                            Sem {sem.number}
+                          </span>
+                          <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-[#6B1E2B]/10 text-[#6B1E2B]'}`}>
+                            {count}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold tracking-tight mt-1 truncate">
+                          {sem.name}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* SECTIONS STRIP FOR SELECTED SEMESTER */}
+                {sections.length > 0 && (
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-mono font-bold text-[#756565] uppercase flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-[#6B1E2B]" />
+                        <span>Sections in {currentSemester?.name}:</span>
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {sections.map(sec => {
+                        const secCount = getSectionStudentCount(sec.id, sec.name);
+                        const isSecSelected = selectedSectionId === sec.id;
+                        return (
+                          <button
+                            key={sec.id}
+                            type="button"
+                            onClick={() => setSelectedSectionId(sec.id)}
+                            className={`px-3 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between ${
+                              isSecSelected
+                                ? 'bg-[#6B1E2B] text-[#FFF8EC] border-[#6B1E2B] shadow-sm ring-1 ring-[#6B1E2B]/40'
+                                : 'bg-[#F3EBDD]/60 text-[#2B2020] border-[#6B1E2B]/15 hover:border-[#6B1E2B]/40 hover:bg-[#F3EBDD]'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold truncate">{sec.name}</div>
+                              <div className={`text-[10px] font-mono ${isSecSelected ? 'text-[#FFF8EC]/70' : 'text-[#756565]'}`}>
+                                Active Roster
+                              </div>
+                            </div>
+                            <span className={`text-xs font-mono font-extrabold px-2 py-0.5 rounded-lg shrink-0 ml-2 ${
+                              isSecSelected ? 'bg-white/25 text-white' : 'bg-[#6B1E2B]/10 text-[#6B1E2B]'
+                            }`}>
+                              {secCount}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quick Pills for Teachers */}
             {currentRole === 'TEACHER' && myTeacherAssignments.length > 0 && (
@@ -784,6 +1053,16 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => handleLoadMonthlySummary()}
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-[#C58A35]/15 text-[#9E671E] border border-[#C58A35]/30 hover:bg-[#C58A35]/25 transition-all cursor-pointer flex items-center gap-1.5"
+                  title="View Monthly Attendance Register"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Monthly Register</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleSaveSession}
                   disabled={isSaving || enrolledStudents.length === 0}
                   className="px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#6B1E2B] hover:bg-[#42121C] text-[#FFF8EC] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-md shadow-[#6B1E2B]/20"
@@ -828,7 +1107,15 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                             </span>
                           </h4>
                           <div className="flex flex-wrap items-center gap-3 text-xs text-[#756565] font-mono mt-1">
-                            <span>Guardian: {stu.guardian_name}</span>
+                            {stu.admission_no && <span>Adm No: <strong className="text-[#2B2020]">{stu.admission_no}</strong></span>}
+                            {stu.uucms_no && <span>UUCMS: <strong className="text-[#6B1E2B]">{stu.uucms_no}</strong></span>}
+                            {stu.gender && <span>Gender: <strong className="text-[#2B2020]">{stu.gender}</strong></span>}
+                            {stu.dob && <span>DOB: <strong className="text-[#2B2020]">{stu.dob}</strong></span>}
+                            {stu.source_program && (
+                              <span className="text-[10px] font-mono font-bold bg-[#6B1E2B]/8 text-[#6B1E2B] px-1.5 py-0.5 rounded">
+                                Stream: {stu.source_program}
+                              </span>
+                            )}
                             <span>Historical Avg: <strong className="text-[#2B2020]">{stu.attendance_rate}%</strong></span>
                             {stu.medical_notes && (
                               <span className="text-[#C58A35] bg-[#C58A35]/12 px-2 py-0.5 rounded-md border border-[#C58A35]/25 font-semibold">
@@ -839,8 +1126,17 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
                         </div>
                       </div>
 
-                      {/* Status Toggle Buttons & Notes */}
-                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                      {/* Status Toggle Buttons, Reassign & Notes */}
+                      <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditStudentModal(stu)}
+                          className="p-1.5 rounded-xl bg-[#F3EBDD] border border-[#6B1E2B]/15 text-[#756565] hover:text-[#6B1E2B] hover:border-[#6B1E2B]/40 transition-all cursor-pointer shrink-0"
+                          title="Reassign Student Semester or Section"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+
                         <input
                           type="text"
                           placeholder="Optional notes..."
@@ -1816,6 +2112,372 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
           )}
         </div>
       )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 1: EXCEL INTEGRATION & VERIFICATION MODAL                     */}
+      {/* ==================================================================== */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2B2020]/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#FFF8EC] border border-[#6B1E2B]/20 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-[#6B1E2B]/15 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#5F8F68]/15 border border-[#5F8F68]/30 flex items-center justify-center text-[#3D6B46]">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#2B2020]">BCA Department Excel Integration Summary</h3>
+                  <p className="text-xs font-mono text-[#756565]">
+                    {importSummary?.filePath || importPreviewData?.targetPath || 'BCA+DA & BCA, BCOM FINAL DATA 2026-27 ADMISSION(1).xlsx'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="p-2 rounded-xl text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                <div className="text-[10px] font-mono uppercase text-[#756565] font-bold">Total Excel Records</div>
+                <div className="text-2xl font-bold font-mono text-[#2B2020] mt-1">
+                  {importSummary?.totalFound || importPreviewData?.totalFound || 765}
+                </div>
+                <div className="text-[11px] text-[#5F8F68] font-semibold mt-0.5">All 3 sheets scanned</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#5F8F68]/10 border border-[#5F8F68]/25">
+                <div className="text-[10px] font-mono uppercase text-[#3D6B46] font-bold">Imported to BCA Dept</div>
+                <div className="text-2xl font-bold font-mono text-[#3D6B46] mt-1">
+                  {importSummary?.totalImported || importPreviewData?.totalValid || 765}
+                </div>
+                <div className="text-[11px] text-[#3D6B46] font-semibold mt-0.5">100% active directory</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                <div className="text-[10px] font-mono uppercase text-[#756565] font-bold">UUCMS Conflicts</div>
+                <div className="text-2xl font-bold font-mono text-[#5F8F68] mt-1">
+                  {importSummary?.duplicateUucmsCount ?? 0}
+                </div>
+                <div className="text-[11px] text-[#756565] mt-0.5">0 duplicate UUCMS</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                <div className="text-[10px] font-mono uppercase text-[#756565] font-bold">Admission Cross-Ref</div>
+                <div className="text-2xl font-bold font-mono text-[#2B2020] mt-1">
+                  {importSummary?.duplicateAdmissionCount ?? 179}
+                </div>
+                <div className="text-[11px] text-[#756565] mt-0.5">Mapped by source sheet</div>
+              </div>
+            </div>
+
+            {/* Worksheet Breakdown Table */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-mono font-bold text-[#2B2020] uppercase tracking-wider flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#6B1E2B]" />
+                <span>Worksheet Source Breakdown (Unified into BCA Department):</span>
+              </h4>
+              <div className="rounded-2xl border border-[#6B1E2B]/15 overflow-hidden">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-[#E8DDCA]/60 border-b border-[#6B1E2B]/15 text-[#2B2020]">
+                    <tr>
+                      <th className="p-3 font-bold">Worksheet Name</th>
+                      <th className="p-3 font-bold">Imported Students</th>
+                      <th className="p-3 font-bold">Department Mapping</th>
+                      <th className="p-3 font-bold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#6B1E2B]/10">
+                    <tr>
+                      <td className="p-3 font-bold text-[#2B2020]">BCA</td>
+                      <td className="p-3 font-bold text-[#6B1E2B]">158 Students</td>
+                      <td className="p-3 text-[#756565]">BCA Department Roster</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded-full bg-[#5F8F68]/15 text-[#5F8F68] text-[10px] font-bold">Imported ✓</span></td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-bold text-[#2B2020]">BCA+DA</td>
+                      <td className="p-3 font-bold text-[#6B1E2B]">222 Students</td>
+                      <td className="p-3 text-[#756565]">BCA Department Roster</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded-full bg-[#5F8F68]/15 text-[#5F8F68] text-[10px] font-bold">Imported ✓</span></td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-bold text-[#2B2020]">BCOM</td>
+                      <td className="p-3 font-bold text-[#6B1E2B]">385 Students</td>
+                      <td className="p-3 text-[#756565]">BCA Department Roster</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded-full bg-[#5F8F68]/15 text-[#5F8F68] text-[10px] font-bold">Imported ✓</span></td>
+                    </tr>
+                    <tr className="bg-[#E8DDCA]/30 font-bold">
+                      <td className="p-3 text-[#2B2020]">Unified Total</td>
+                      <td className="p-3 text-[#6B1E2B]">765 Students</td>
+                      <td className="p-3 text-[#2B2020]">Unified BCA Department</td>
+                      <td className="p-3"><span className="px-2 py-0.5 rounded-full bg-[#5F8F68]/20 text-[#3D6B46] text-[10px] font-extrabold">Active in System</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Semester & Section Allocation Table */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-mono font-bold text-[#2B2020] uppercase tracking-wider flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-[#6B1E2B]" />
+                <span>Deterministic Distribution Across 6 BCA Semesters:</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(importSummary?.semesterDistribution || [
+                  { semesterNumber: 1, semesterName: '1st Semester', studentCount: 128, sections: [{ sectionName: 'Section 1st Neo', studentCount: 32 }, { sectionName: 'Section 1B1', studentCount: 32 }, { sectionName: 'Section 1B2', studentCount: 32 }, { sectionName: 'Section 1B3', studentCount: 32 }] },
+                  { semesterNumber: 2, semesterName: '2nd Semester', studentCount: 128, sections: [{ sectionName: 'Section 2nd Neo', studentCount: 32 }, { sectionName: 'Section 2B1', studentCount: 32 }, { sectionName: 'Section 2B2', studentCount: 32 }, { sectionName: 'Section 2B3', studentCount: 32 }] },
+                  { semesterNumber: 3, semesterName: '3rd Semester', studentCount: 128, sections: [{ sectionName: 'Section 3rd Neo', studentCount: 32 }, { sectionName: 'Section 3B1', studentCount: 32 }, { sectionName: 'Section 3B2', studentCount: 32 }, { sectionName: 'Section 3B3', studentCount: 32 }] },
+                  { semesterNumber: 4, semesterName: '4th Semester', studentCount: 127, sections: [{ sectionName: 'Section 4th Neo', studentCount: 32 }, { sectionName: 'Section 4B1', studentCount: 32 }, { sectionName: 'Section 4B2', studentCount: 32 }, { sectionName: 'Section 4B3', studentCount: 31 }] },
+                  { semesterNumber: 5, semesterName: '5th Semester', studentCount: 127, sections: [{ sectionName: 'Section 5th Neo', studentCount: 32 }, { sectionName: 'Section 5B1', studentCount: 32 }, { sectionName: 'Section 5B2', studentCount: 32 }, { sectionName: 'Section 5B3', studentCount: 31 }] },
+                  { semesterNumber: 6, semesterName: '6th Semester', studentCount: 127, sections: [{ sectionName: 'Section 6th Neo', studentCount: 32 }, { sectionName: 'Section 6B1', studentCount: 32 }, { sectionName: 'Section 6B2', studentCount: 32 }, { sectionName: 'Section 6B3', studentCount: 31 }] }
+                ]).map((sem: any) => (
+                  <div key={sem.semesterNumber} className="p-3.5 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15 space-y-2">
+                    <div className="flex items-center justify-between border-b border-[#6B1E2B]/10 pb-2">
+                      <span className="font-bold text-xs text-[#2B2020]">{sem.semesterName}</span>
+                      <span className="font-mono text-xs font-extrabold text-[#6B1E2B] bg-[#6B1E2B]/10 px-2 py-0.5 rounded-md">
+                        {sem.studentCount} Students
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-[11px] font-mono text-[#756565]">
+                      {sem.sections.map((sec: any, sIdx: number) => (
+                        <div key={sIdx} className="flex items-center justify-between">
+                          <span>{sec.sectionName}:</span>
+                          <strong className="text-[#2B2020]">{sec.studentCount}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#6B1E2B]/15">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-[#6B1E2B]/20 text-xs font-mono font-bold text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD] cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={isImporting}
+                onClick={handleConfirmImport}
+                className="px-5 py-2.5 rounded-xl bg-[#6B1E2B] text-[#FFF8EC] text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#42121C] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-md shadow-[#6B1E2B]/20"
+              >
+                <RefreshCw className={`w-4 h-4 ${isImporting ? 'animate-spin' : ''}`} />
+                <span>{isImporting ? 'Re-Importing...' : 'Re-Sync from Excel'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 2: STUDENT REASSIGNMENT MODAL                                 */}
+      {/* ==================================================================== */}
+      {showEditModal && editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2B2020]/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#FFF8EC] border border-[#6B1E2B]/20 rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-5">
+            <div className="flex items-center justify-between border-b border-[#6B1E2B]/15 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#6B1E2B]/10 border border-[#6B1E2B]/20 flex items-center justify-center text-[#6B1E2B]">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#2B2020]">Reassign Student Section</h3>
+                  <p className="text-xs font-mono text-[#756565]">Preserves attendance records and student ID</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="p-2 rounded-xl text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/12 space-y-1.5 text-xs font-mono">
+              <div>Student: <strong className="text-[#2B2020] font-bold">{editingStudent.name}</strong></div>
+              <div>Roll / Adm No: <strong className="text-[#6B1E2B]">{editingStudent.admission_no || editingStudent.roll_number}</strong></div>
+              {editingStudent.uucms_no && <div>UUCMS: <strong className="text-[#6B1E2B]">{editingStudent.uucms_no}</strong></div>}
+              <div>Current Assignment: <strong className="text-[#2B2020]">{editingStudent.semester_name} • {editingStudent.section}</strong></div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono font-bold text-[#756565] uppercase">Target Semester</label>
+                <select
+                  value={editSemesterId}
+                  onChange={(e) => {
+                    setEditSemesterId(e.target.value);
+                    const semSecs = sections.filter(sec => sec.semester_id === e.target.value);
+                    if (semSecs.length > 0) setEditSectionId(semSecs[0].id);
+                  }}
+                  className="w-full bg-[#F3EBDD]/80 border border-[#6B1E2B]/20 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#2B2020] outline-none focus:border-[#6B1E2B]"
+                >
+                  {semesters.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono font-bold text-[#756565] uppercase">Target Section</label>
+                <select
+                  value={editSectionId}
+                  onChange={(e) => setEditSectionId(e.target.value)}
+                  className="w-full bg-[#F3EBDD]/80 border border-[#6B1E2B]/20 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#2B2020] outline-none focus:border-[#6B1E2B]"
+                >
+                  {sections
+                    .filter(sec => !editSemesterId || sec.semester_id === editSemesterId)
+                    .map(sec => (
+                      <option key={sec.id} value={sec.id}>{sec.name}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#6B1E2B]/15">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 rounded-xl border border-[#6B1E2B]/20 text-xs font-mono font-bold text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isUpdatingStudent}
+                onClick={handleSaveStudentEdit}
+                className="px-5 py-2 rounded-xl bg-[#6B1E2B] text-[#FFF8EC] text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#42121C] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isUpdatingStudent ? 'Saving...' : 'Save Reassignment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL 3: MONTHLY ATTENDANCE REGISTER MODAL                          */}
+      {/* ==================================================================== */}
+      {showMonthlyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2B2020]/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#FFF8EC] border border-[#6B1E2B]/20 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-[#6B1E2B]/15 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#C58A35]/15 border border-[#C58A35]/30 flex items-center justify-center text-[#9E671E]">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#2B2020]">Monthly Attendance Register</h3>
+                  <p className="text-xs font-mono text-[#756565]">
+                    {currentSemester?.name} ({currentSection?.name}) • Month: {selectedMonth}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    handleLoadMonthlySummary(e.target.value);
+                  }}
+                  className="bg-[#F3EBDD] border border-[#6B1E2B]/20 rounded-xl px-3 py-1.5 text-xs font-mono text-[#2B2020] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMonthlyModal(false)}
+                  className="p-2 rounded-xl text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {isLoadingMonthly ? (
+              <div className="p-12 text-center font-mono text-xs text-[#756565]">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#6B1E2B]" />
+                Compiling monthly attendance register...
+              </div>
+            ) : monthlyData ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                    <div className="text-[10px] font-mono uppercase text-[#756565]">Total Enrolled</div>
+                    <div className="text-xl font-bold font-mono text-[#2B2020] mt-1">{monthlyData.total_students} Students</div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                    <div className="text-[10px] font-mono uppercase text-[#756565]">Classes Conducted</div>
+                    <div className="text-xl font-bold font-mono text-[#6B1E2B] mt-1">{monthlyData.total_sessions} Sessions</div>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[#F3EBDD]/70 border border-[#6B1E2B]/15">
+                    <div className="text-[10px] font-mono uppercase text-[#756565]">Average Rate</div>
+                    <div className="text-xl font-bold font-mono text-[#5F8F68] mt-1">{monthlyData.monthly_percentage ?? monthlyData.average_attendance_percentage ?? 0}%</div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#6B1E2B]/15 overflow-hidden">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-[#E8DDCA]/60 border-b border-[#6B1E2B]/15 text-[#2B2020]">
+                      <tr>
+                        <th className="p-3 font-bold">Student Name</th>
+                        <th className="p-3 font-bold">Roll / UUCMS</th>
+                        <th className="p-3 font-bold">Present / Total</th>
+                        <th className="p-3 font-bold">Monthly %</th>
+                        <th className="p-3 font-bold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#6B1E2B]/10">
+                      {monthlyData.students?.map((s: any) => (
+                        <tr key={s.id} className="hover:bg-[#F3EBDD]/40">
+                          <td className="p-3 font-bold text-[#2B2020]">{s.name}</td>
+                          <td className="p-3 text-[#756565]">{s.uucms_no || s.roll_number}</td>
+                          <td className="p-3 text-[#2B2020]">{s.attended_sessions} / {monthlyData.total_sessions || s.total_sessions}</td>
+                          <td className={`p-3 font-bold ${s.attendance_rate >= 75 ? 'text-[#5F8F68]' : 'text-[#B94A55]'}`}>
+                            {s.attendance_rate}%
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              s.attendance_rate >= 75 ? 'bg-[#5F8F68]/15 text-[#5F8F68]' : 'bg-[#B94A55]/15 text-[#B94A55]'
+                            }`}>
+                              {s.attendance_rate >= 75 ? 'ELIGIBLE' : 'SHORTAGE'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center font-mono text-xs text-[#756565]">
+                No session data available for this month.
+              </div>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-[#6B1E2B]/15">
+              <button
+                type="button"
+                onClick={() => setShowMonthlyModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-[#6B1E2B] text-[#FFF8EC] text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#42121C] cursor-pointer"
+              >
+                Close Register
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

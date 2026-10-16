@@ -16,10 +16,17 @@ export interface Student {
   name: string;
   email?: string;
   roll_number: string;
+  admission_no?: string;
   register_number?: string;
+  uucms_no?: string;
+  gender?: 'MALE' | 'FEMALE' | string;
+  dob?: string;
+  source_program?: 'BCA' | 'BCA+DA' | 'BCOM' | string;
+  sl_no?: number;
   phone?: string;
   class_grade: string;
   section: string;
+  section_id?: string;
   course_id?: string;
   course_name?: string;
   academic_year_id?: string;
@@ -32,6 +39,29 @@ export interface Student {
   attendance_rate: number;
   medical_notes?: string;
   status: 'ACTIVE' | 'ON_LEAVE' | 'TRANSFERRED';
+}
+
+export interface ImportValidationSummary {
+  filePath: string;
+  totalFound: number;
+  totalImported: number;
+  totalSkipped: number;
+  totalInvalid: number;
+  duplicateUucmsCount: number;
+  duplicateAdmissionCount: number;
+  sheetBreakdown: {
+    sheetName: string;
+    count: number;
+  }[];
+  semesterDistribution: {
+    semesterNumber: number;
+    semesterName: string;
+    studentCount: number;
+    sections: {
+      sectionName: string;
+      studentCount: number;
+    }[];
+  }[];
 }
 
 export interface Staff {

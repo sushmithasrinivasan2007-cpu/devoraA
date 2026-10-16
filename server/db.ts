@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { 
   Student, 
   Staff, 
@@ -22,10 +24,12 @@ import {
   AttendanceSettings,
   StudentAttendanceOverview,
   StudentSubjectAttendance,
-  AdminAttendanceOverview
+  AdminAttendanceOverview,
+  ImportValidationSummary
 } from '../src/types';
+import { buildUnifiedStudentsDirectory } from './services/studentImporter';
 
-// In-Memory Database Store for Devora Campus Operations
+// Database Store for Devora Campus Operations with Persistence
 export class CampusDatabase {
   public students: Student[] = [];
   public staff: Staff[] = [];
@@ -35,6 +39,7 @@ export class CampusDatabase {
   public maintenance: MaintenanceIssue[] = [];
   public notifications: NotificationItem[] = [];
   public emailLogs: EmailLog[] = [];
+  public importValidationSummary: ImportValidationSummary | null = null;
 
   // Academic Configuration & Dynamic Attendance Entities
   public courses: Course[] = [];
@@ -80,6 +85,7 @@ export class CampusDatabase {
   }
 
   public seedDatabase() {
+    const todayStr = new Date().toISOString().split('T')[0];
     this.staff = [
       {
         id: 'usr-adm-01',
@@ -273,438 +279,185 @@ export class CampusDatabase {
       { id: 'sub-bca-603', code: 'BCA603', name: 'Major Capstone Project', course_id: 'crs-bca', semester_id: 'sem-bca-6', credits: 6, hours_per_week: 8, status: 'ACTIVE' }
     ];
 
-    // 7. Academic Configuration: Students Roster with Register Numbers
-    this.students = [
-      // BCA 3rd Semester - Section 3B1
-      {
-        id: 'stu-8a-01',
-        name: 'Aiden Sharma',
-        email: 'aiden.s@student.devora.edu',
-        roll_number: 'BCA-3B1-01',
-        register_number: 'BCA26001',
-        phone: '+15550981101',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Sunita Sharma',
-        guardian_phone: '+15550981101',
-        guardian_email: 'sunita.sharma@example.com',
-        attendance_rate: 93.3,
-        medical_notes: 'Mild pollen allergy',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-8a-02',
-        name: 'Chloe Zhao',
-        email: 'chloe.z@student.devora.edu',
-        roll_number: 'BCA-3B1-02',
-        register_number: 'BCA26002',
-        phone: '+15550981102',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Hao Zhao',
-        guardian_phone: '+15550981102',
-        guardian_email: 'hao.zhao@example.com',
-        attendance_rate: 90.0,
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-8a-03',
-        name: 'Liam O\'Connor',
-        email: 'liam.oc@student.devora.edu',
-        roll_number: 'BCA-3B1-03',
-        register_number: 'BCA26003',
-        phone: '+15550981103',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Brigid O\'Connor',
-        guardian_phone: '+15550981103',
-        guardian_email: 'brigid.oc@example.com',
-        attendance_rate: 66.7, // Below 75%
-        medical_notes: 'Asthma inhaler in clinic',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-8a-04',
-        name: 'Maya Patel',
-        email: 'maya.p@student.devora.edu',
-        roll_number: 'BCA-3B1-04',
-        register_number: 'BCA26004',
-        phone: '+15550981104',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Karan Patel',
-        guardian_phone: '+15550981104',
-        guardian_email: 'karan.patel@example.com',
-        attendance_rate: 86.7,
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-bca-09',
-        name: 'Rahul Verma',
-        email: 'rahul.v@student.devora.edu',
-        roll_number: 'BCA-3B1-05',
-        register_number: 'BCA26005',
-        phone: '+15550981109',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Suresh Verma',
-        guardian_phone: '+15550981119',
-        guardian_email: 'suresh.v@example.com',
-        attendance_rate: 83.3,
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-bca-10',
-        name: 'Priya Nair',
-        email: 'priya.n@student.devora.edu',
-        roll_number: 'BCA-3B1-06',
-        register_number: 'BCA26006',
-        phone: '+15550981110',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Deepa Nair',
-        guardian_phone: '+15550981120',
-        guardian_email: 'deepa.n@example.com',
-        attendance_rate: 93.3,
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-bca-11',
-        name: 'Sameer Khan',
-        email: 'sameer.k@student.devora.edu',
-        roll_number: 'BCA-3B1-07',
-        register_number: 'BCA26007',
-        phone: '+15550981111',
-        class_grade: '3',
-        section: 'Section 3B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Farooq Khan',
-        guardian_phone: '+15550981121',
-        guardian_email: 'farooq.k@example.com',
-        attendance_rate: 60.0, // Below 75%
-        status: 'ACTIVE'
-      },
+    // 7. Academic Configuration: Unified BCA Department Students Directory (765 students from Excel)
+    let loadedFromStore = false;
+    try {
+      loadedFromStore = this.loadFromFile();
+    } catch (e) {
+      console.warn('[CampusDatabase] Could not load from store file:', e);
+    }
 
-      // BCA 3rd Semester - Section 3B2
-      {
-        id: 'stu-8b-01',
-        name: 'Daniel Kim',
-        email: 'daniel.k@student.devora.edu',
-        roll_number: 'BCA-3B2-01',
-        register_number: 'BCA26008',
-        phone: '+15550981105',
-        class_grade: '3',
-        section: 'Section 3B2',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'Grace Kim',
-        guardian_phone: '+15550981105',
-        guardian_email: 'grace.kim@example.com',
-        attendance_rate: 66.7, // Below 75%
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-8b-02',
-        name: 'Zara Mercer',
-        email: 'zara.m@student.devora.edu',
-        roll_number: 'BCA-3B2-02',
-        register_number: 'BCA26009',
-        phone: '+15550981106',
-        class_grade: '3',
-        section: 'Section 3B2',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        guardian_name: 'David Mercer',
-        guardian_phone: '+15550981106',
-        guardian_email: 'david.mercer@example.com',
-        attendance_rate: 80.0,
-        medical_notes: 'Nut allergy',
-        status: 'ACTIVE'
-      },
-
-      // BCA 5th Semester - Section 5B1
-      {
-        id: 'stu-10a-01',
-        name: 'Lucas Silva',
-        email: 'lucas.s@student.devora.edu',
-        roll_number: 'BCA-5B1-01',
-        register_number: 'BCA26010',
-        phone: '+15550981107',
-        class_grade: '5',
-        section: 'Section 5B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-5',
-        semester_name: '5th Semester',
-        guardian_name: 'Camila Silva',
-        guardian_phone: '+15550981107',
-        guardian_email: 'camila.silva@example.com',
-        attendance_rate: 93.3,
-        status: 'ACTIVE'
-      },
-      {
-        id: 'stu-10a-02',
-        name: 'Sophia Taylor',
-        email: 'sophia.t@student.devora.edu',
-        roll_number: 'BCA-5B1-02',
-        register_number: 'BCA26011',
-        phone: '+15550981108',
-        class_grade: '5',
-        section: 'Section 5B1',
-        course_id: 'crs-bca',
-        course_name: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year: '2026-27',
-        semester_id: 'sem-bca-5',
-        semester_name: '5th Semester',
-        guardian_name: 'Robert Taylor',
-        guardian_phone: '+15550981108',
-        guardian_email: 'robert.taylor@example.com',
-        attendance_rate: 100.0,
-        status: 'ACTIVE'
+    if (!loadedFromStore || this.students.length === 0) {
+      try {
+        const { students, validation } = buildUnifiedStudentsDirectory();
+        this.students = students;
+        this.importValidationSummary = validation;
+        console.log(`[CampusDatabase] Loaded ${students.length} unified BCA students from Excel.`);
+      } catch (err) {
+        console.error('[CampusDatabase] Failed to load students from Excel:', err);
+        this.students = [];
       }
-    ];
+    }
 
-    // 8. Teacher Assignments
-    this.teacherAssignments = [
-      {
-        id: 'asn-01',
-        teacher_id: 'usr-tch-08',
-        teacher_name: 'Sarah Jenkins',
-        course_id: 'crs-bca',
-        course_code: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year_name: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        section_id: 'sec-sem-bca-3-b1',
-        section_name: 'Section 3B1',
-        subject_id: 'sub-bca-301',
-        subject_name: 'Python Programming',
-        subject_code: 'BCA301',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'asn-02',
-        teacher_id: 'usr-tch-08',
-        teacher_name: 'Sarah Jenkins',
-        course_id: 'crs-bca',
-        course_code: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year_name: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        section_id: 'sec-sem-bca-3-b2',
-        section_name: 'Section 3B2',
-        subject_id: 'sub-bca-301',
-        subject_name: 'Python Programming',
-        subject_code: 'BCA301',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'asn-03',
-        teacher_id: 'usr-tch-08',
-        teacher_name: 'Sarah Jenkins',
-        course_id: 'crs-bca',
-        course_code: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year_name: '2026-27',
-        semester_id: 'sem-bca-5',
-        semester_name: '5th Semester',
-        section_id: 'sec-sem-bca-5-b1',
-        section_name: 'Section 5B1',
-        subject_id: 'sub-bca-501',
-        subject_name: 'Artificial Intelligence & ML',
-        subject_code: 'BCA501',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'asn-04',
-        teacher_id: 'usr-tch-10',
-        teacher_name: 'Marcus Chen',
-        course_id: 'crs-bca',
-        course_code: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year_name: '2026-27',
-        semester_id: 'sem-bca-3',
-        semester_name: '3rd Semester',
-        section_id: 'sec-sem-bca-3-b1',
-        section_name: 'Section 3B1',
-        subject_id: 'sub-bca-302',
-        subject_name: 'Database Management Systems (DBMS)',
-        subject_code: 'BCA302',
-        status: 'ACTIVE'
-      },
-      {
-        id: 'asn-05',
-        teacher_id: 'usr-tch-10',
-        teacher_name: 'Marcus Chen',
-        course_id: 'crs-bca',
-        course_code: 'BCA',
-        academic_year_id: 'ay-2026-27',
-        academic_year_name: '2026-27',
-        semester_id: 'sem-bca-5',
-        semester_name: '5th Semester',
-        section_id: 'sec-sem-bca-5-b1',
-        section_name: 'Section 5B1',
-        subject_id: 'sub-bca-502',
-        subject_name: 'Cloud Computing & DevOps',
-        subject_code: 'BCA502',
-        status: 'ACTIVE'
-      }
-    ];
+    // 8. Teacher Assignments (Across all 6 BCA Semesters and all 4 sections)
+    if (this.teacherAssignments.length === 0) {
+      const teacherPool = [
+        { id: 'usr-tch-08', name: 'Sarah Jenkins' },
+        { id: 'usr-tch-10', name: 'Marcus Chen' }
+      ];
 
-    // 9. Attendance Sessions & Records (Dynamic Seed)
-    const todayStr = new Date().toISOString().split('T')[0];
-    this.attendanceSessions = [];
-    this.attendanceEntries = [];
-    this.attendance = [];
+      this.teacherAssignments = [];
+      let tOffset = 0;
+      this.semesters.filter(s => s.course_id === 'crs-bca').forEach(sem => {
+        const semSecs = this.sections.filter(sec => sec.semester_id === sem.id);
+        const semSubs = this.subjects.filter(sub => sub.semester_id === sem.id);
+        const primarySub = semSubs[0] || { id: 'sub-gen', name: 'Computer Application Core', code: 'BCA-GEN' };
 
-    // Realistic historical sessions for BCA 3rd Sem Section 3B1
-    const students3B1 = this.students.filter(s => s.section === 'Section 3B1' && s.course_id === 'crs-bca');
-    const subjects3B1 = [
-      { id: 'sub-bca-301', name: 'Python Programming', teacherId: 'usr-tch-08', teacherName: 'Sarah Jenkins' },
-      { id: 'sub-bca-302', name: 'Database Management Systems (DBMS)', teacherId: 'usr-tch-10', teacherName: 'Marcus Chen' }
-    ];
-
-    // Seed 15 sessions over recent weeks
-    let sessionCounter = 1;
-    for (let dayOffset = 14; dayOffset >= 0; dayOffset--) {
-      const d = new Date(Date.now() - dayOffset * 86400000);
-      if (d.getDay() === 0 || d.getDay() === 6) continue; // Skip weekends
-      const dateStr = d.toISOString().split('T')[0];
-
-      subjects3B1.forEach(sub => {
-        const sessionId = `ses-3b1-${sub.id}-${dateStr}`;
-        const session: AttendanceSession = {
-          id: sessionId,
-          course_id: 'crs-bca',
-          course_code: 'BCA',
-          academic_year_id: 'ay-2026-27',
-          academic_year_name: '2026-27',
-          semester_id: 'sem-bca-3',
-          semester_name: '3rd Semester',
-          section_id: 'sec-sem-bca-3-b1',
-          section_name: 'Section 3B1',
-          subject_id: sub.id,
-          subject_name: sub.name,
-          date: dateStr,
-          session_name: `Lecture ${sessionCounter}`,
-          recorded_by: sub.teacherId,
-          recorded_by_name: sub.teacherName,
-          created_at: new Date(d.getTime() + 10 * 3600000).toISOString()
-        };
-
-        let presentInSession = 0;
-        let absentInSession = 0;
-
-        students3B1.forEach(stu => {
-          let isPresent = true;
-          if (stu.id === 'stu-8a-03') { // Liam O'Connor: absent more frequently
-            isPresent = (sessionCounter % 3 !== 0);
-          } else if (stu.id === 'stu-bca-11') { // Sameer Khan: absent frequently
-            isPresent = (sessionCounter % 2 === 0);
-          } else if (stu.id === 'stu-bca-09') { // Rahul: occasionally absent
-            isPresent = (sessionCounter % 6 !== 0);
-          } else {
-            isPresent = (sessionCounter % 12 !== 0);
-          }
-
-          const status: 'PRESENT' | 'ABSENT' = isPresent ? 'PRESENT' : 'ABSENT';
-          if (isPresent) presentInSession++;
-          else absentInSession++;
-
-          const entry: AttendanceEntry = {
-            id: `ent-${sessionId}-${stu.id}`,
-            session_id: sessionId,
-            student_id: stu.id,
-            student_name: stu.name,
-            register_number: stu.register_number || '',
-            status,
-            notes: !isPresent ? (stu.medical_notes ? 'Medical note on file' : 'Unexcused') : ''
-          };
-
-          this.attendanceEntries.push(entry);
-
-          // Mirror into legacy attendance records for backward compatibility
-          if (dateStr === todayStr) {
-            this.attendance.push({
-              id: `att-legacy-${entry.id}`,
-              student_id: stu.id,
-              student_name: stu.name,
-              class_grade: stu.class_grade,
-              section: stu.section,
-              date: dateStr,
-              status,
-              notes: entry.notes,
-              session_id: sessionId,
-              subject_id: sub.id,
-              subject_name: sub.name,
-              course_id: 'crs-bca',
-              academic_year_id: 'ay-2026-27',
-              semester_id: 'sem-bca-3',
-              register_number: stu.register_number
-            });
-          }
+        semSecs.forEach((sec, sIdx) => {
+          const t = teacherPool[(tOffset + sIdx) % teacherPool.length];
+          this.teacherAssignments.push({
+            id: `asn-${sem.id}-${sec.id}`,
+            teacher_id: t.id,
+            teacher_name: t.name,
+            course_id: 'crs-bca',
+            course_code: 'BCA',
+            academic_year_id: 'ay-2026-27',
+            academic_year_name: '2026-27',
+            semester_id: sem.id,
+            semester_name: sem.name,
+            section_id: sec.id,
+            section_name: sec.name,
+            subject_id: primarySub.id,
+            subject_name: primarySub.name,
+            subject_code: primarySub.code,
+            status: 'ACTIVE'
+          });
         });
-
-        session.total_students = students3B1.length;
-        session.present_count = presentInSession;
-        session.absent_count = absentInSession;
-        this.attendanceSessions.push(session);
+        tOffset++;
       });
-      sessionCounter++;
+    }
+
+    // 9. Attendance Sessions & Records (Dynamic Seed across semesters if empty)
+    if (this.attendanceSessions.length === 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      this.attendanceSessions = [];
+      this.attendanceEntries = [];
+      this.attendance = [];
+
+      // Create attendance sessions across semesters for the past 10 class days
+      const activeSemesters = this.semesters.filter(s => s.course_id === 'crs-bca');
+      
+      let sessionCounter = 1;
+      for (let dayOffset = 9; dayOffset >= 0; dayOffset--) {
+        const d = new Date(Date.now() - dayOffset * 86400000);
+        if (d.getDay() === 0 || d.getDay() === 6) continue; // Skip weekends
+        const dateStr = d.toISOString().split('T')[0];
+
+        // Seed 2 sections per semester each day
+        activeSemesters.forEach(sem => {
+          const semSections = this.sections.filter(sec => sec.semester_id === sem.id).slice(0, 2);
+          const semSub = this.subjects.find(s => s.semester_id === sem.id) || this.subjects[0];
+          const teacher = sem.number % 2 === 0 ? this.staff[4] : this.staff[1];
+
+          semSections.forEach(sec => {
+            const secStudents = this.students.filter(s => s.semester_id === sem.id && s.section === sec.name);
+            if (secStudents.length === 0) return;
+
+            const sessionId = `ses-${sem.id}-${sec.id}-${dateStr}`;
+            const session: AttendanceSession = {
+              id: sessionId,
+              course_id: 'crs-bca',
+              course_code: 'BCA',
+              academic_year_id: 'ay-2026-27',
+              academic_year_name: '2026-27',
+              semester_id: sem.id,
+              semester_name: sem.name,
+              section_id: sec.id,
+              section_name: sec.name,
+              subject_id: semSub.id,
+              subject_name: semSub.name,
+              date: dateStr,
+              session_name: `Lecture ${sessionCounter}`,
+              recorded_by: teacher?.id || 'usr-tch-08',
+              recorded_by_name: teacher?.name || 'Sarah Jenkins',
+              created_at: new Date(d.getTime() + 9 * 3600000).toISOString()
+            };
+
+            let presentCount = 0;
+            let absentCount = 0;
+
+            secStudents.forEach((stu, stuIdx) => {
+              // Deterministic attendance status
+              let status: 'PRESENT' | 'ABSENT' | 'EXCUSED' = 'PRESENT';
+              let notes = '';
+
+              if ((stuIdx + dayOffset) % 15 === 0) {
+                status = 'EXCUSED'; // Leave
+                notes = 'Medical Leave Approved';
+              } else if ((stuIdx + dayOffset) % 7 === 0) {
+                status = 'ABSENT';
+                notes = 'Unexcused absence';
+                absentCount++;
+              } else {
+                status = 'PRESENT';
+                presentCount++;
+              }
+
+              const entry: AttendanceEntry = {
+                id: `ent-${sessionId}-${stu.id}`,
+                session_id: sessionId,
+                student_id: stu.id,
+                student_name: stu.name,
+                register_number: stu.register_number || stu.admission_no || '',
+                status,
+                notes
+              };
+
+              this.attendanceEntries.push(entry);
+
+              // Mirror legacy attendance
+              if (dateStr === todayStr) {
+                this.attendance.push({
+                  id: `att-legacy-${entry.id}`,
+                  student_id: stu.id,
+                  student_name: stu.name,
+                  class_grade: stu.class_grade,
+                  section: stu.section,
+                  date: dateStr,
+                  status,
+                  notes,
+                  session_id: sessionId,
+                  subject_id: semSub.id,
+                  subject_name: semSub.name,
+                  course_id: 'crs-bca',
+                  academic_year_id: 'ay-2026-27',
+                  semester_id: sem.id,
+                  register_number: stu.register_number
+                });
+              }
+            });
+
+            session.total_students = secStudents.length;
+            session.present_count = presentCount;
+            session.absent_count = absentCount;
+            this.attendanceSessions.push(session);
+          });
+        });
+        sessionCounter++;
+      }
+
+      // Calculate attendance percentages strictly using attendance records actually saved in the database
+      this.students.forEach(stu => {
+        const stuEntries = this.attendanceEntries.filter(e => e.student_id === stu.id);
+        if (stuEntries.length > 0) {
+          const presentNum = stuEntries.filter(e => e.status === 'PRESENT').length;
+          stu.attendance_rate = Math.round((presentNum / stuEntries.length) * 1000) / 10;
+        } else {
+          stu.attendance_rate = 92.5; // Unrecorded baseline
+        }
+      });
+
+      this.saveToFile();
     }
 
     this.maintenance = [
@@ -1481,10 +1234,250 @@ export class CampusDatabase {
       created_at: new Date().toISOString()
     });
 
+    this.saveToFile();
+
     return {
       promoted_count: affected.length,
       affected_students: affected
     };
+  }
+
+  // ==========================================
+  // PERSISTENCE & DATA MANAGEMENT
+  // ==========================================
+
+  private getStoreFilePath(): string {
+    return path.join(process.cwd(), 'database', 'campus_state.json');
+  }
+
+  public saveToFile(): void {
+    try {
+      const data = {
+        students: this.students,
+        attendanceSessions: this.attendanceSessions,
+        attendanceEntries: this.attendanceEntries,
+        attendance: this.attendance,
+        teacherAssignments: this.teacherAssignments,
+        attendanceSettings: this.attendanceSettings,
+        importValidationSummary: this.importValidationSummary
+      };
+      const filePath = this.getStoreFilePath();
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('[CampusDatabase] Failed to save state to file:', e);
+    }
+  }
+
+  public loadFromFile(): boolean {
+    try {
+      const filePath = this.getStoreFilePath();
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.students) && data.students.length > 0) {
+          this.students = data.students;
+          if (Array.isArray(data.attendanceSessions)) this.attendanceSessions = data.attendanceSessions;
+          if (Array.isArray(data.attendanceEntries)) this.attendanceEntries = data.attendanceEntries;
+          if (Array.isArray(data.attendance)) this.attendance = data.attendance;
+          if (Array.isArray(data.teacherAssignments) && data.teacherAssignments.length > 0) {
+            this.teacherAssignments = data.teacherAssignments;
+          }
+          if (data.attendanceSettings) this.attendanceSettings = data.attendanceSettings;
+          if (data.importValidationSummary) this.importValidationSummary = data.importValidationSummary;
+          console.log(`[CampusDatabase] Loaded ${this.students.length} students & ${this.attendanceSessions.length} attendance sessions from state file.`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error('[CampusDatabase] Failed to load state from file:', e);
+    }
+    return false;
+  }
+
+  /**
+   * Update Student Semester, Section, or info without deleting attendance history
+   */
+  public updateStudent(studentId: string, updates: Partial<Student>): Student | null {
+    const student = this.students.find(s => s.id === studentId || s.uucms_no === studentId || s.roll_number === studentId);
+    if (!student) return null;
+
+    if (updates.semester_id && updates.semester_id !== student.semester_id) {
+      const sem = this.semesters.find(s => s.id === updates.semester_id);
+      if (sem) {
+        student.semester_id = sem.id;
+        student.semester_name = sem.name;
+        student.class_grade = String(sem.number);
+      }
+    }
+
+    if (updates.section_id && updates.section_id !== student.section_id) {
+      const sec = this.sections.find(s => s.id === updates.section_id);
+      if (sec) {
+        student.section_id = sec.id;
+        student.section = sec.name;
+      }
+    } else if (updates.section && updates.section !== student.section) {
+      student.section = updates.section;
+    }
+
+    if (updates.status) student.status = updates.status;
+    if (updates.name) student.name = updates.name;
+    if (updates.phone) student.phone = updates.phone;
+    if (updates.guardian_name) student.guardian_name = updates.guardian_name;
+    if (updates.guardian_phone) student.guardian_phone = updates.guardian_phone;
+
+    this.saveToFile();
+    return student;
+  }
+
+  /**
+   * Re-import students from Excel while preserving admin semester/section customizations
+   */
+  public reimportStudentsFromExcel(filePath?: string): ImportValidationSummary {
+    const { students: importedStudents, validation } = buildUnifiedStudentsDirectory(filePath);
+
+    const existingMap = new Map(this.students.map(s => [s.uucms_no || s.roll_number, s]));
+
+    this.students = importedStudents.map(newStu => {
+      const key = newStu.uucms_no || newStu.roll_number;
+      const existing = existingMap.get(key);
+      if (existing) {
+        return {
+          ...newStu,
+          id: existing.id,
+          semester_id: existing.semester_id,
+          semester_name: existing.semester_name,
+          section: existing.section,
+          section_id: existing.section_id,
+          class_grade: existing.class_grade,
+          status: existing.status,
+          attendance_rate: existing.attendance_rate
+        };
+      }
+      return newStu;
+    });
+
+    // Recompute attendance rate using actual saved records
+    this.students.forEach(stu => {
+      const entries = this.attendanceEntries.filter(e => e.student_id === stu.id);
+      if (entries.length > 0) {
+        const pres = entries.filter(e => e.status === 'PRESENT').length;
+        stu.attendance_rate = Math.round((pres / entries.length) * 1000) / 10;
+      }
+    });
+
+    this.importValidationSummary = validation;
+    this.saveToFile();
+    return validation;
+  }
+
+  /**
+   * Monthly and Daily Attendance Summary strictly calculated from database records
+   */
+  public getMonthlyAttendanceSummary(filters?: {
+    semester_id?: string;
+    section_id?: string;
+    month?: string; // YYYY-MM
+  }) {
+    const selectedMonth = filters?.month || new Date().toISOString().slice(0, 7);
+    const sessionMap = new Map(this.attendanceSessions.map(s => [s.id, s]));
+
+    let targetStudents = this.students;
+    if (filters?.semester_id) targetStudents = targetStudents.filter(s => s.semester_id === filters.semester_id);
+    if (filters?.section_id) {
+      const sec = this.sections.find(s => s.id === filters.section_id);
+      if (sec) targetStudents = targetStudents.filter(s => s.section === sec.name);
+    }
+
+    const relevantSessions = this.attendanceSessions.filter(s => {
+      if (!s.date.startsWith(selectedMonth)) return false;
+      if (filters?.semester_id && s.semester_id !== filters.semester_id) return false;
+      if (filters?.section_id && s.section_id !== filters.section_id) return false;
+      return true;
+    });
+
+    const relevantSessionIds = new Set(relevantSessions.map(s => s.id));
+    const relevantEntries = this.attendanceEntries.filter(e => relevantSessionIds.has(e.session_id));
+
+    // Daily breakdown
+    const dailyMap: Record<string, { date: string; present: number; absent: number; leave: number; total: number }> = {};
+    relevantEntries.forEach(e => {
+      const sess = sessionMap.get(e.session_id);
+      if (!sess) return;
+      if (!dailyMap[sess.date]) {
+        dailyMap[sess.date] = { date: sess.date, present: 0, absent: 0, leave: 0, total: 0 };
+      }
+      dailyMap[sess.date].total++;
+      if (e.status === 'PRESENT') dailyMap[sess.date].present++;
+      else if (e.status === 'ABSENT') dailyMap[sess.date].absent++;
+      else dailyMap[sess.date].leave++;
+    });
+
+    const totalEntriesCount = relevantEntries.length;
+    const totalPresent = relevantEntries.filter(e => e.status === 'PRESENT').length;
+    const totalAbsent = relevantEntries.filter(e => e.status === 'ABSENT').length;
+    const totalLeave = relevantEntries.filter(e => e.status === 'EXCUSED' || e.status === 'LATE').length;
+
+    const monthlyPercentage = totalEntriesCount > 0
+      ? Math.round((totalPresent / totalEntriesCount) * 1000) / 10
+      : 0;
+
+    return {
+      month: selectedMonth,
+      total_students: targetStudents.length,
+      total_sessions: relevantSessions.length,
+      total_records: totalEntriesCount,
+      present_count: totalPresent,
+      absent_count: totalAbsent,
+      leave_count: totalLeave,
+      monthly_percentage: monthlyPercentage,
+      daily_breakdown: Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date))
+    };
+  }
+
+  /**
+   * Exportable attendance records for Excel or CSV
+   */
+  public getAttendanceExportRows(filters?: {
+    semester_id?: string;
+    section_id?: string;
+    date?: string;
+    month?: string;
+  }) {
+    const sessionMap = new Map(this.attendanceSessions.map(s => [s.id, s]));
+    const studentMap = new Map(this.students.map(s => [s.id, s]));
+
+    const filteredEntries = this.attendanceEntries.filter(e => {
+      const s = sessionMap.get(e.session_id);
+      if (!s) return false;
+      if (filters?.semester_id && s.semester_id !== filters.semester_id) return false;
+      if (filters?.section_id && s.section_id !== filters.section_id) return false;
+      if (filters?.date && s.date !== filters.date) return false;
+      if (filters?.month && !s.date.startsWith(filters.month)) return false;
+      return true;
+    });
+
+    return filteredEntries.map((e, idx) => {
+      const sess = sessionMap.get(e.session_id);
+      const stu = studentMap.get(e.student_id);
+
+      return {
+        "SL No": idx + 1,
+        "Student Name": e.student_name || stu?.name || '',
+        "Admission No": stu?.admission_no || stu?.roll_number || '',
+        "UUCMS Reg No": stu?.uucms_no || stu?.register_number || '',
+        "Source Program": stu?.source_program || 'BCA',
+        "Gender": stu?.gender || 'MALE',
+        "Semester": sess?.semester_name || stu?.semester_name || '',
+        "Section": sess?.section_name || stu?.section || '',
+        "Subject": sess?.subject_name || '',
+        "Date": sess?.date || '',
+        "Status": e.status === 'EXCUSED' ? 'LEAVE' : e.status,
+        "Notes": e.notes || ''
+      };
+    });
   }
 }
 

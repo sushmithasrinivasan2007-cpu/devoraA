@@ -118,7 +118,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               {myProfile ? (
                 <>
                   <span className="font-mono text-[11px] text-[#9A8989]">
-                    {myProfile.class_grade} – Section {myProfile.section}
+                    {myProfile.semester_name || `Semester ${myProfile.class_grade}`} • {myProfile.section}
                   </span>
                   <span className={`block font-semibold mt-0.5 ${
                     myProfile.attendance_rate >= 85 ? 'text-[#5F8F68]' : 'text-[#B94A55]'

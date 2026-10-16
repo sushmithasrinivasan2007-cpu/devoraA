@@ -5,7 +5,9 @@ import { createServer as createViteServer } from "vite";
 import { db } from "./server/db";
 import { queryTerminalReel, classifyCampusIssue } from "./server/ai";
 import { dispatchEmail, verifySMTPConnection } from "./server/services/smtp";
+import XLSX from 'xlsx';
 import { PriorityLevel } from "./src/types";
+import { buildUnifiedStudentsDirectory } from "./server/services/studentImporter";
 
 async function startServer() {
   const app = express();
@@ -90,7 +92,17 @@ async function startServer() {
       status: req.body.status || 'ACTIVE'
     };
     db.students.push(newStudent);
+    db.saveToFile();
     res.status(201).json(newStudent);
+  });
+
+  app.patch("/api/students/:id", (req, res) => {
+    const { id } = req.params;
+    const updated = db.updateStudent(id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    res.json(updated);
   });
 
   // 6. Staff Directory
@@ -523,6 +535,88 @@ async function startServer() {
   app.get("/api/attendance/ai-insights", (req, res) => {
     const insights = db.getAIAttendanceInsights();
     res.json({ insights });
+  });
+
+  // Monthly & Daily Attendance Summary Report
+  app.get("/api/attendance/monthly-summary", (req, res) => {
+    const { semester_id, section_id, month } = req.query;
+    const summary = db.getMonthlyAttendanceSummary({
+      semester_id: semester_id ? String(semester_id) : undefined,
+      section_id: section_id ? String(section_id) : undefined,
+      month: month ? String(month) : undefined
+    });
+    res.json(summary);
+  });
+
+  // Export Attendance Report to Excel or CSV
+  app.get("/api/attendance/export", (req, res) => {
+    try {
+      const { semester_id, section_id, date, month, format } = req.query;
+      const rows = db.getAttendanceExportRows({
+        semester_id: semester_id ? String(semester_id) : undefined,
+        section_id: section_id ? String(section_id) : undefined,
+        date: date ? String(date) : undefined,
+        month: month ? String(month) : undefined
+      });
+
+      const exportFormat = String(format || 'xlsx').toLowerCase();
+      const filenameBase = `Devora_Attendance_Report_${date || month || new Date().toISOString().split('T')[0]}`;
+
+      const wb = XLSX.utils.book_new();
+      const exportData = rows.length > 0 ? rows : [{ Status: 'No attendance records matching the selected filter criteria.' }];
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+
+      if (exportFormat === 'csv') {
+        const csvContent = XLSX.utils.sheet_to_csv(ws);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+        return res.send(csvContent);
+      } else {
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+        return res.send(buf);
+      }
+    } catch (err: any) {
+      console.error('Export attendance error:', err);
+      res.status(500).json({ error: err.message || 'Failed to export attendance report.' });
+    }
+  });
+
+  // Excel Students Import Preview (dry-run validation without mutating)
+  app.get("/api/academic/import-preview", (req, res) => {
+    try {
+      const { validation, students } = buildUnifiedStudentsDirectory();
+      res.json({
+        validation,
+        sampleStudents: students.slice(0, 15)
+      });
+    } catch (err: any) {
+      console.error('Import preview error:', err);
+      res.status(500).json({ error: err.message || 'Failed to generate Excel import preview.' });
+    }
+  });
+
+  // Excel Students Import Confirmation (writes to database and saves state)
+  app.post("/api/academic/import-confirm", (req, res) => {
+    try {
+      const validation = db.reimportStudentsFromExcel();
+      res.json({
+        success: true,
+        message: `Successfully integrated ${db.students.length} students into BCA Department across 6 semesters.`,
+        validation,
+        totalStudents: db.students.length
+      });
+    } catch (err: any) {
+      console.error('Import confirm error:', err);
+      res.status(500).json({ error: err.message || 'Failed to complete student import from Excel.' });
+    }
+  });
+
+  // Latest Excel Import Summary
+  app.get("/api/academic/import-summary", (req, res) => {
+    res.json(db.importValidationSummary || { status: 'NO_IMPORT_RECORDED' });
   });
 
   // 8. Campus Maintenance Module
@@ -1003,10 +1097,11 @@ async function startServer() {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
+      root: import.meta.dirname || process.cwd(),
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(import.meta.dirname || process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
@@ -1014,7 +1109,9 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[DEVORA AI] Server running at http://0.0.0.0:${PORT}`);
+    console.log(`\n  \x1b[32m➜\x1b[0m  \x1b[1mDEVORA AI\x1b[0m Server running at:`);
+    console.log(`  \x1b[32m➜\x1b[0m  \x1b[1mLocal:\x1b[0m   \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
+    console.log(`  \x1b[32m➜\x1b[0m  \x1b[1mNetwork:\x1b[0m \x1b[36mhttp://127.0.0.1:${PORT}\x1b[0m\n`);
   });
 }
 
