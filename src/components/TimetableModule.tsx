@@ -285,7 +285,7 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
                   className="w-4 h-4 accent-[#6B1E2B] cursor-pointer"
                 />
                 <label htmlFor="chk-email-broadcast" className="text-xs font-mono font-medium text-[#2B2020] cursor-pointer">
-                  Dispatch instant SMTP email broadcast to target recipients
+                  Dispatch instant email broadcast to target recipients
                 </label>
               </div>
 

@@ -5,13 +5,13 @@ import { createServer as createViteServer } from "vite";
 import { db } from "./server/db";
 import { queryTerminalReel, classifyCampusIssue } from "./server/ai";
 import { dispatchEmail, verifySMTPConnection } from "./server/services/smtp";
+import { PriorityLevel, Staff } from "./src/types";
 import XLSX from 'xlsx';
-import { PriorityLevel } from "./src/types";
 import { buildUnifiedStudentsDirectory } from "./server/services/studentImporter";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 3001;
 
   app.use(express.json());
 
@@ -84,14 +84,102 @@ async function startServer() {
     res.json(db.students);
   });
 
-  app.post("/api/students", (req, res) => {
+  app.post("/api/students", async (req, res) => {
+    const studentPassword = req.body.password?.trim() || 'student123';
     const newStudent = {
       id: `stu-${Date.now()}`,
       ...req.body,
       attendance_rate: 100,
-      status: req.body.status || 'ACTIVE'
+      status: req.body.status || 'ACTIVE',
+      password: studentPassword
     };
     db.students.push(newStudent);
+
+    // Automatically send credentials email to student's registered email
+    const studentEmail = (newStudent.email || newStudent.guardian_email || '').trim();
+    if (studentEmail) {
+      const host = req.headers.host || 'localhost:3001';
+      const protocol = req.protocol || 'http';
+      const origin = req.headers.origin || `${protocol}://${host}`;
+
+      const studentHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #FFF8EC; border: 1px solid #E8DDCA; border-radius: 16px; overflow: hidden; color: #2B2020;">
+          <div style="background-color: #6B1E2B; padding: 24px 28px; text-align: left;">
+            <h1 style="color: #FFF8EC; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">DEVORA AI</h1>
+            <p style="color: rgba(255,248,236,0.8); margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Student Portal Credentials &amp; Enrollment</p>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="color: #2B2020; margin: 0 0 12px 0; font-size: 18px; font-weight: 700;">Welcome to Devora Campus, ${newStudent.name}!</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #4A3A3A; margin: 0 0 16px 0;">
+              You have been enrolled in the Devora Campus System. Below are your login credentials to access the student portal:
+            </p>
+            
+            <div style="background-color: #FFFFFF; border: 1px solid rgba(107,30,43,0.15); border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600; width: 40%;">Username / Name:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${newStudent.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Registered Login Email:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${studentEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Student Portal Password:</td>
+                  <td style="padding: 6px 0; color: #6B1E2B; font-weight: 800; font-family: monospace; font-size: 15px;">${studentPassword}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Admission / Roll Number:</td>
+                  <td style="padding: 6px 0; color: #2B2020;">${newStudent.roll_number}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Class Grade &amp; Section:</td>
+                  <td style="padding: 6px 0; color: #2B2020;">Grade ${newStudent.class_grade || '8'} - Section ${newStudent.section || 'A'}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0 20px 0;">
+              <a href="${origin}" style="background-color: #6B1E2B; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(107,30,43,0.2);">
+                Login to Student Portal
+              </a>
+            </div>
+
+            <p style="font-size: 12px; line-height: 1.5; color: #756565; margin: 20px 0 0 0; border-top: 1px solid #E8DDCA; padding-top: 16px;">
+              You can log in to view real-time class attendance, timetable schedules, and campus alerts.
+            </p>
+          </div>
+        </div>
+      `;
+
+      try {
+        const emailRes = await dispatchEmail(
+          studentEmail,
+          `Welcome to Devora Campus — Student Portal Credentials for ${newStudent.name}`,
+          `Welcome to Devora Campus, ${newStudent.name}!\n\nYour username: ${newStudent.name}\nRegistered login email: ${studentEmail}\nPassword: ${studentPassword}\nRoll No: ${newStudent.roll_number}\n\nLogin link: ${origin}`,
+          {
+            recipientName: newStudent.name,
+            triggerEvent: 'Student Enrollment',
+            htmlContent: studentHtml
+          }
+        );
+
+        db.emailLogs.unshift({
+          id: `email-${Date.now()}`,
+          recipient_email: studentEmail,
+          recipient_name: newStudent.name,
+          subject: `Welcome to Devora Campus — Student Portal Credentials for ${newStudent.name}`,
+          message: `Onboarding credentials dispatched to student ${newStudent.name} (${studentEmail}).`,
+          template_id: 'DEVORA_STUDENT_ONBOARDING',
+          status: emailRes.status,
+          trigger_event: 'Student Enrollment',
+          created_at: new Date().toISOString()
+        });
+      } catch (err: any) {
+        console.warn(`[STUDENT ONBOARDING EMAIL] Warning: ${err.message}`);
+      }
+    }
+
     db.saveToFile();
     res.status(201).json(newStudent);
   });
@@ -105,9 +193,295 @@ async function startServer() {
     res.json(updated);
   });
 
-  // 6. Staff Directory
+  // Admin Update Student Password
+  app.put("/api/students/:id/password", async (req, res) => {
+    const { id } = req.params;
+    const { password, notify } = req.body;
+    if (!password || !password.trim()) {
+      return res.status(400).json({ error: "New password is required" });
+    }
+
+    const student = db.students.find(s => s.id === id || s.roll_number === id);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    student.password = password.trim();
+
+    const studentEmail = (student.email || student.guardian_email || '').trim();
+    if (notify !== false && studentEmail) {
+      const host = req.headers.host || 'localhost:3001';
+      const protocol = req.protocol || 'http';
+      const origin = req.headers.origin || `${protocol}://${host}`;
+
+      const updateHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #FFF8EC; border: 1px solid #E8DDCA; border-radius: 16px; overflow: hidden; color: #2B2020;">
+          <div style="background-color: #6B1E2B; padding: 24px 28px; text-align: left;">
+            <h1 style="color: #FFF8EC; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">DEVORA AI</h1>
+            <p style="color: rgba(255,248,236,0.8); margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Admin Security Update</p>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="color: #2B2020; margin: 0 0 12px 0; font-size: 18px; font-weight: 700;">Password Updated by Campus Administration</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #4A3A3A; margin: 0 0 16px 0;">
+              Hello <strong>${student.name}</strong>,<br><br>
+              The campus administrator has updated the password for your Devora Student Portal account.
+            </p>
+            
+            <div style="background-color: #FFFFFF; border: 1px solid rgba(107,30,43,0.15); border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600; width: 40%;">Student Name:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${student.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Login Identifier:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${studentEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">New Password:</td>
+                  <td style="padding: 6px 0; color: #6B1E2B; font-weight: 800; font-family: monospace; font-size: 16px;">${password.trim()}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0 20px 0;">
+              <a href="${origin}" style="background-color: #6B1E2B; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; display: inline-block;">
+                Login to Student Portal
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      try {
+        const emailRes = await dispatchEmail(
+          studentEmail,
+          `Devora Campus — Student Password Updated by Administrator for ${student.name}`,
+          `Hello ${student.name},\n\nYour student portal password has been updated by the campus administrator to: ${password.trim()}\n\nLogin link: ${origin}`,
+          {
+            recipientName: student.name,
+            triggerEvent: 'Admin Password Reset',
+            htmlContent: updateHtml
+          }
+        );
+
+        db.emailLogs.unshift({
+          id: `email-${Date.now()}`,
+          recipient_email: studentEmail,
+          recipient_name: student.name,
+          subject: `Devora Campus — Student Password Updated for ${student.name}`,
+          message: `Admin updated password for student ${student.name} (${studentEmail}).`,
+          template_id: 'DEVORA_ADMIN_PASSWORD_UPDATE',
+          status: emailRes.status,
+          trigger_event: 'Admin Password Reset',
+          created_at: new Date().toISOString()
+        });
+      } catch (err: any) {
+        console.warn(`[STUDENT PASSWORD UPDATE EMAIL] Warning: ${err.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Password updated successfully for ${student.name}`,
+      student
+    });
+  });
+
+  // Admin Delete Student
+  app.delete("/api/students/:id", (req, res) => {
+    const { id } = req.params;
+    const initialLen = db.students.length;
+    db.students = db.students.filter(s => s.id !== id && s.roll_number !== id);
+    res.json({ success: db.students.length < initialLen });
+  });
+
+  // 6. Staff & Faculty Directory
   app.get("/api/staff", (req, res) => {
     res.json(db.staff);
+  });
+
+  app.post("/api/staff", async (req, res) => {
+    const { name, role_title, department, email, phone, employee_id, assigned_classes, status } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and email are required" });
+    }
+
+    const isTeacher = role_title === 'Teacher' || !role_title;
+    const prefix = isTeacher ? 'tch' : role_title === 'Administration' ? 'adm' : 'stf';
+    const count = db.staff.length + 1;
+    const empId = employee_id?.trim() || `EMP-${prefix.toUpperCase()}-${String(count).padStart(2, '0')}`;
+
+    let classes: string[] = [];
+    if (Array.isArray(assigned_classes)) {
+      classes = assigned_classes;
+    } else if (typeof assigned_classes === 'string' && assigned_classes.trim()) {
+      classes = assigned_classes.split(',').map((c: string) => c.trim()).filter(Boolean);
+    }
+
+    const staffPassword = req.body.password?.trim() || 'teacher123';
+
+    const newStaff: Staff = {
+      id: `usr-${prefix}-${Date.now().toString(36)}`,
+      name: name.trim(),
+      employee_id: empId,
+      role_title: role_title || 'Teacher',
+      department: department || (isTeacher ? 'Academics' : 'Operations'),
+      email: email.trim(),
+      phone: phone?.trim() || '+15550190000',
+      status: (status === 'ON_LEAVE' ? 'ON_LEAVE' : 'ACTIVE'),
+      assigned_classes: classes,
+      password: staffPassword
+    };
+
+    db.staff.push(newStaff);
+
+    // Automatically send credentials email to faculty/teacher's registered email
+    if (newStaff.email) {
+      const host = req.headers.host || 'localhost:3001';
+      const protocol = req.protocol || 'http';
+      const origin = req.headers.origin || `${protocol}://${host}`;
+
+      const staffHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #FFF8EC; border: 1px solid #E8DDCA; border-radius: 16px; overflow: hidden; color: #2B2020;">
+          <div style="background-color: #6B1E2B; padding: 24px 28px; text-align: left;">
+            <h1 style="color: #FFF8EC; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">DEVORA AI</h1>
+            <p style="color: rgba(255,248,236,0.8); margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Campus Faculty &amp; Staff Credentials</p>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="color: #2B2020; margin: 0 0 12px 0; font-size: 18px; font-weight: 700;">Welcome to Devora Campus, ${newStaff.name}!</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #4A3A3A; margin: 0 0 16px 0;">
+              Your official account has been created on the Devora Campus Operations System. Below are your login credentials:
+            </p>
+            
+            <div style="background-color: #FFFFFF; border: 1px solid rgba(107,30,43,0.15); border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600; width: 40%;">Username / Name:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${newStaff.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Registered Email:</td>
+                  <td style="padding: 6px 0; color: #2B2020; font-weight: 700;">${newStaff.email}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Portal Password:</td>
+                  <td style="padding: 6px 0; color: #6B1E2B; font-weight: 800; font-family: monospace; font-size: 15px;">${staffPassword}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Role &amp; Department:</td>
+                  <td style="padding: 6px 0; color: #2B2020;">${newStaff.role_title} · ${newStaff.department}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #756565; font-weight: 600;">Employee ID:</td>
+                  <td style="padding: 6px 0; color: #2B2020;">${newStaff.employee_id}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0 20px 0;">
+              <a href="${origin}" style="background-color: #6B1E2B; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(107,30,43,0.2);">
+                Login to Faculty Portal
+              </a>
+            </div>
+
+            <p style="font-size: 12px; line-height: 1.5; color: #756565; margin: 20px 0 0 0; border-top: 1px solid #E8DDCA; padding-top: 16px;">
+              You can log in at any time using your registered email and password. If you ever need to change your password, use the "Forgot password?" option on the login page.
+            </p>
+          </div>
+        </div>
+      `;
+
+      try {
+        const emailRes = await dispatchEmail(
+          newStaff.email,
+          `Welcome to Devora Campus — ${newStaff.role_title} Credentials for ${newStaff.name}`,
+          `Welcome to Devora Campus, ${newStaff.name}!\n\nYour username: ${newStaff.name}\nRegistered login email: ${newStaff.email}\nPassword: ${staffPassword}\nEmployee ID: ${newStaff.employee_id}\nRole: ${newStaff.role_title} (${newStaff.department})\n\nLogin link: ${origin}`,
+          {
+            recipientName: newStaff.name,
+            triggerEvent: 'Staff & Faculty Onboarding',
+            htmlContent: staffHtml
+          }
+        );
+
+        db.emailLogs.unshift({
+          id: `email-${Date.now()}`,
+          recipient_email: newStaff.email,
+          recipient_name: newStaff.name,
+          subject: `Welcome to Devora Campus — ${newStaff.role_title} Credentials for ${newStaff.name}`,
+          message: `Onboarding credentials dispatched to ${newStaff.name} (${newStaff.email}).`,
+          template_id: 'DEVORA_STAFF_ONBOARDING',
+          status: emailRes.status,
+          trigger_event: 'Staff & Faculty Onboarding',
+          created_at: new Date().toISOString()
+        });
+      } catch (err: any) {
+        console.warn(`[STAFF ONBOARDING EMAIL] Warning: ${err.message}`);
+      }
+    }
+
+    res.status(201).json(newStaff);
+  });
+
+  app.delete("/api/staff/:id", (req, res) => {
+    const { id } = req.params;
+    const initialLen = db.staff.length;
+    db.staff = db.staff.filter(s => s.id !== id);
+    res.json({ success: db.staff.length < initialLen });
+  });
+
+  // Admin Update Staff Password
+  app.put("/api/staff/:id/password", async (req, res) => {
+    const { id } = req.params;
+    const { password, notify } = req.body;
+    if (!password || !password.trim()) {
+      return res.status(400).json({ error: "New password is required" });
+    }
+
+    const staffMember = db.staff.find(s => s.id === id || s.employee_id === id);
+    if (!staffMember) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staffMember.password = password.trim();
+
+    if (notify !== false && staffMember.email) {
+      const host = req.headers.host || 'localhost:3001';
+      const protocol = req.protocol || 'http';
+      const origin = req.headers.origin || `${protocol}://${host}`;
+
+      try {
+        const emailRes = await dispatchEmail(
+          staffMember.email,
+          `Devora Campus — Password Updated by Administrator for ${staffMember.name}`,
+          `Hello ${staffMember.name},\n\nYour portal login password has been updated by the campus administrator to: ${password.trim()}\n\nLogin link: ${origin}`,
+          {
+            recipientName: staffMember.name,
+            triggerEvent: 'Admin Password Reset'
+          }
+        );
+
+        db.emailLogs.unshift({
+          id: `email-${Date.now()}`,
+          recipient_email: staffMember.email,
+          recipient_name: staffMember.name,
+          subject: `Devora Campus — Staff Password Updated for ${staffMember.name}`,
+          message: `Admin updated password for ${staffMember.name} (${staffMember.email}).`,
+          template_id: 'DEVORA_ADMIN_PASSWORD_UPDATE',
+          status: emailRes.status,
+          trigger_event: 'Admin Password Reset',
+          created_at: new Date().toISOString()
+        });
+      } catch (err: any) {
+        console.warn(`[STAFF PASSWORD UPDATE EMAIL] Warning: ${err.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Password updated successfully for ${staffMember.name}`,
+      staff: staffMember
+    });
   });
 
   // 7. Attendance API & AI Attendance Analysis
@@ -922,6 +1296,309 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post("/api/notifications/clear-all", (req, res) => {
+    db.notifications = [];
+    res.json({ success: true });
+  });
+
+  // ==========================================
+  // AUTHENTICATION & FACULTY CREDENTIALS
+  // ==========================================
+
+  // List faculty for login helper / self-service
+  app.get("/api/auth/faculty", (req, res) => {
+    const list = db.staff.map(s => ({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      role_title: s.role_title,
+      department: s.department,
+      has_password: Boolean(s.password)
+    }));
+    res.json(list);
+  });
+
+  // Universal Login (Admin, Faculty by email, Student)
+  app.post("/api/auth/login", (req, res) => {
+    const { username, email, password, role } = req.body;
+    const identifier = (email || username || '').trim().toLowerCase();
+    const pwd = (password || '').trim();
+
+    if (!identifier) {
+      return res.status(400).json({ error: "Email or username is required." });
+    }
+
+    // 1. Admin login
+    if (role === 'ADMIN' || identifier === 'admin@devora.edu' || identifier === 'director@devora.edu') {
+      if ((identifier === 'admin@devora.edu' || identifier === 'director@devora.edu') && pwd === 'admin123') {
+        return res.json({
+          success: true,
+          role: 'ADMIN',
+          name: 'Dr. Alistair Vance',
+          email: 'director@devora.edu'
+        });
+      }
+      const adminStaff = db.staff.find(s => s.email.toLowerCase() === identifier && s.role_title.toLowerCase() === 'administration');
+      if (adminStaff) {
+        if (!adminStaff.password) {
+          return res.status(403).json({
+            needsPasswordCreation: true,
+            email: adminStaff.email,
+            name: adminStaff.name,
+            error: "No password has been set for this account yet. Please create your password."
+          });
+        }
+        if (adminStaff.password === pwd) {
+          return res.json({
+            success: true,
+            role: 'ADMIN',
+            name: adminStaff.name,
+            email: adminStaff.email
+          });
+        }
+      }
+      if (role === 'ADMIN') {
+        return res.status(401).json({ error: "Invalid admin credentials." });
+      }
+    }
+
+    // 2. Teacher / Faculty login by their own email
+    if (role === 'TEACHER' || role === 'STAFF' || !role) {
+      // Legacy demo teacher
+      if (identifier === 'teacher@devora.edu' && pwd === 'teacher123') {
+        return res.json({
+          success: true,
+          role: 'TEACHER',
+          name: 'Sarah Jenkins',
+          email: 's.jenkins@devora.edu'
+        });
+      }
+
+      const faculty = db.staff.find(s => s.email.toLowerCase() === identifier);
+      if (faculty) {
+        if (!faculty.password) {
+          return res.status(403).json({
+            needsPasswordCreation: true,
+            email: faculty.email,
+            name: faculty.name,
+            error: "Welcome! You haven't created a password for your faculty account yet. Please create your password now."
+          });
+        }
+        if (faculty.password === pwd) {
+          return res.json({
+            success: true,
+            role: 'TEACHER',
+            name: faculty.name,
+            email: faculty.email,
+            faculty_id: faculty.id,
+            employee_id: faculty.employee_id
+          });
+        }
+        return res.status(401).json({ error: "Invalid password for faculty account " + faculty.email });
+      }
+    }
+
+    // 3. Student login
+    if (role === 'STUDENT' || identifier === 'student@devora.edu') {
+      if (identifier === 'student@devora.edu' && pwd === 'student123') {
+        return res.json({
+          success: true,
+          role: 'STUDENT',
+          name: 'Aiden Sharma',
+          email: 'student@devora.edu'
+        });
+      }
+      const student = db.students.find(s => (s.email && s.email.toLowerCase() === identifier) || s.roll_number.toLowerCase() === identifier);
+      if (student) {
+        const studentValidPass = student.password || 'student123';
+        if (pwd === studentValidPass) {
+          return res.json({
+            success: true,
+            role: 'STUDENT',
+            name: student.name,
+            email: student.email || identifier
+          });
+        }
+      }
+    }
+
+    return res.status(401).json({ error: "Invalid email or password. Please verify your credentials." });
+  });
+
+  // Faculty Create / Set Password
+  app.post("/api/auth/create-password", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ error: "Password must be at least 4 characters long." });
+    }
+
+    const faculty = db.staff.find(s => s.email.toLowerCase() === email.trim().toLowerCase());
+    if (!faculty) {
+      return res.status(404).json({ error: `Faculty account with email "${email}" was not found. Please contact campus admin.` });
+    }
+
+    faculty.password = password.trim();
+
+    try {
+      await dispatchEmail(
+        faculty.email,
+        "Devora Campus — Your Faculty Password Has Been Set",
+        `Hello ${faculty.name},\n\nYour password for the Devora Campus Operations Portal has been successfully set. You can now log in using ${faculty.email} and your new password.\n\nDevora AI Campus System`,
+        { recipientName: faculty.name, triggerEvent: "Password Creation" }
+      );
+    } catch (e: any) {
+      console.warn("[AUTH] Email notification skipped:", e.message);
+    }
+
+    res.json({
+      success: true,
+      name: faculty.name,
+      email: faculty.email,
+      role: 'TEACHER',
+      message: "Password created successfully! You can now log in."
+    });
+  });
+
+  // Forgot Password: Send Reset Link & Code to registered email
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: "Please enter your registered email address." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const faculty = db.staff.find(s => s.email.toLowerCase() === cleanEmail);
+    const student = db.students.find(s => (s.email && s.email.toLowerCase() === cleanEmail) || s.roll_number.toLowerCase() === cleanEmail);
+    const isAdmin = cleanEmail === 'admin@devora.edu' || cleanEmail === 'director@devora.edu';
+    const isStudent = cleanEmail === 'student@devora.edu' || Boolean(student);
+
+    if (!faculty && !isAdmin && !isStudent) {
+      return res.status(404).json({ error: `No campus account found with email "${email}". Please verify your registered email.` });
+    }
+
+    // Students are not permitted to reset passwords self-service
+    if (isStudent && !faculty && !isAdmin) {
+      return res.status(403).json({
+        error: "Students cannot reset passwords self-service. Only the campus administrator has permission to change a student password."
+      });
+    }
+
+    const targetEmail = faculty ? faculty.email : student?.email || cleanEmail;
+    const recipientName = faculty?.name || student?.name || (isAdmin ? 'Dr. Alistair Vance' : 'Campus Member');
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    db.resetTokens[cleanEmail] = code;
+    if (targetEmail.toLowerCase() !== cleanEmail) {
+      db.resetTokens[targetEmail.toLowerCase()] = code;
+    }
+
+    const host = req.headers.host || 'localhost:3001';
+    const protocol = req.protocol || 'http';
+    const origin = req.headers.origin || `${protocol}://${host}`;
+    const resetUrl = `${origin}/?resetToken=${code}&email=${encodeURIComponent(targetEmail)}`;
+
+    const resetHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background-color: #FFF8EC; border: 1px solid #E8DDCA; border-radius: 16px; overflow: hidden; color: #2B2020;">
+        <div style="background-color: #6B1E2B; padding: 24px 28px; text-align: left;">
+          <h1 style="color: #FFF8EC; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">DEVORA AI</h1>
+          <p style="color: rgba(255,248,236,0.8); margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Campus Identity &amp; Password Recovery</p>
+        </div>
+        <div style="padding: 28px;">
+          <h2 style="color: #2B2020; margin: 0 0 12px 0; font-size: 18px; font-weight: 700;">Password Reset Request</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #4A3A3A; margin: 0 0 16px 0;">
+            Hello <strong>${recipientName}</strong>,<br><br>
+            We received a request to reset the password for your Devora Campus account registered with <strong>${targetEmail}</strong>.
+          </p>
+          
+          <div style="background-color: #FFFFFF; border: 1px solid rgba(107,30,43,0.15); border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
+            <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #756565; margin: 0 0 8px 0;">Your 6-Digit Verification Code</p>
+            <div style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #6B1E2B; font-family: monospace; padding: 6px 0;">
+              ${code}
+            </div>
+            <p style="font-size: 11px; color: #9A8989; margin: 8px 0 0 0;">Enter this code on the login page to reset your password.</p>
+          </div>
+
+          <div style="text-align: center; margin: 24px 0 20px 0;">
+            <a href="${resetUrl}" style="background-color: #6B1E2B; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(107,30,43,0.2);">
+              Click Here to Reset Password
+            </a>
+          </div>
+
+          <p style="font-size: 12px; line-height: 1.5; color: #756565; margin: 20px 0 0 0; border-top: 1px solid #E8DDCA; padding-top: 16px;">
+            If you did not request a password reset, please ignore this email. Your account credentials remain completely secure.
+          </p>
+        </div>
+      </div>
+    `;
+
+    try {
+      const emailRes = await dispatchEmail(
+        targetEmail,
+        "Devora Campus — Password Reset Instructions & Code",
+        `Hello ${recipientName},\n\nYour 6-digit verification code to reset your Devora Campus account password is: ${code}\n\nYou can also reset your password directly using this link:\n${resetUrl}\n\nDevora AI Campus System`,
+        {
+          recipientName,
+          triggerEvent: "Password Reset",
+          htmlContent: resetHtml
+        }
+      );
+
+      db.emailLogs.unshift({
+        id: `email-${Date.now()}`,
+        recipient_email: targetEmail,
+        recipient_name: recipientName,
+        subject: "Devora Campus — Password Reset Instructions & Code",
+        message: `Password reset verification code dispatched to ${targetEmail}. Code: ${code}`,
+        template_id: 'DEVORA_PASSWORD_RESET',
+        status: emailRes.status,
+        trigger_event: 'Password Reset',
+        created_at: new Date().toISOString()
+      });
+    } catch (e: any) {
+      console.warn("[AUTH] SMTP dispatch error:", e.message);
+    }
+
+    res.json({
+      success: true,
+      message: `A password reset email has been sent to ${targetEmail}. Please check your inbox.`,
+      target_email: targetEmail
+    });
+  });
+
+  // Reset Password with Code
+  app.post("/api/auth/reset-password", (req, res) => {
+    const { email, code, new_password } = req.body;
+    if (!email || !code || !new_password) {
+      return res.status(400).json({ error: "Email, reset code, and new password are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const validCode = db.resetTokens[cleanEmail];
+
+    if (!validCode || validCode !== code.trim()) {
+      return res.status(400).json({ error: "Invalid or expired reset code. Please request a new one." });
+    }
+
+    const faculty = db.staff.find(s => s.email.toLowerCase() === cleanEmail);
+    if (faculty) {
+      faculty.password = new_password.trim();
+    }
+    const student = db.students.find(s => s.email && s.email.toLowerCase() === cleanEmail);
+    if (student) {
+      student.password = new_password.trim();
+    }
+
+    delete db.resetTokens[cleanEmail];
+
+    res.json({
+      success: true,
+      message: "Password reset successfully! You can now log in with your new password."
+    });
+  });
+
   // 12. Email / SMTP Logs & Direct Test Dispatch
   app.get("/api/email/logs", (req, res) => {
     res.json(db.emailLogs);
@@ -967,6 +1644,13 @@ async function startServer() {
       created_at: new Date().toISOString(),
       recipient_phone: req.body.phone_number
     });
+
+    if (result.status === 'FAILED') {
+      return res.status(502).json({
+        ...result,
+        error: result.response_details?.error || 'Email dispatch failed'
+      });
+    }
 
     res.json(result);
   });
@@ -1097,11 +1781,10 @@ async function startServer() {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
-      root: import.meta.dirname || process.cwd(),
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(import.meta.dirname || process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
@@ -1109,9 +1792,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n  \x1b[32m➜\x1b[0m  \x1b[1mDEVORA AI\x1b[0m Server running at:`);
-    console.log(`  \x1b[32m➜\x1b[0m  \x1b[1mLocal:\x1b[0m   \x1b[36mhttp://localhost:${PORT}\x1b[0m`);
-    console.log(`  \x1b[32m➜\x1b[0m  \x1b[1mNetwork:\x1b[0m \x1b[36mhttp://127.0.0.1:${PORT}\x1b[0m\n`);
+    console.log(`[DEVORA AI] Server running at http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -60,28 +60,6 @@ export const AdminDailyBrief: React.FC<AdminDailyBriefProps> = ({
         </div>
       </div>
 
-      {/* Header Statement */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#6B1E2B]/12 pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#6B1E2B] animate-pulse" />
-            <span className="text-xs font-mono font-bold tracking-wider text-[#6B1E2B] uppercase">
-              DEVORA AUTONOMOUS INTELLIGENCE // BRIEFING ACTIVE
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#2B2020] tracking-tight">
-            {currentRole === 'STUDENT'
-              ? "Here's your personalized campus brief for today."
-              : "Today's Executive Operations Dashboard"}
-          </h2>
-          <p className="text-sm text-[#756565] font-medium mt-0.5">
-            Real-time campus operations brief generated from live database state.
-          </p>
-        </div>
-
-
-      </div>
-
       {/* 4 Operations Pillars Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-6">
         {/* 1. ATTENDANCE */}
@@ -226,7 +204,7 @@ export const AdminDailyBrief: React.FC<AdminDailyBriefProps> = ({
           onClick={() => onNavigateTab && onNavigateTab('terminal')}
           className="self-stretch md:self-auto px-4 py-2.5 rounded-xl font-mono text-xs font-bold tracking-wider uppercase bg-[#6B1E2B] hover:bg-[#42121C] text-[#FFF8EC] transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md shadow-[#6B1E2B]/20 hover:-translate-y-0.5"
         >
-          <span>Open Terminal Reel</span>
+          <span>Chat</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

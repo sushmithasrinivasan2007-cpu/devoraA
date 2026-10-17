@@ -8,6 +8,7 @@ interface HeaderProps {
   notifications: NotificationItem[];
   onMarkNotificationRead: (id: string) => void;
   onMarkAllRead: () => void;
+  onClearAll?: () => void;
   onToggleMobileMenu?: () => void;
   loggedInName?: string;
   onLogout?: () => void;
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   notifications,
   onMarkNotificationRead,
   onMarkAllRead,
+  onClearAll,
   onToggleMobileMenu,
   loggedInName,
   onLogout,
@@ -190,15 +192,26 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#2B2020]">
                     Notifications ({notifications.length})
                   </span>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={onMarkAllRead}
-                      className="text-[11px] font-mono font-semibold text-[#6B1E2B] hover:underline cursor-pointer"
-                    >
-                      Mark all read
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={onMarkAllRead}
+                        className="text-[11px] font-mono font-semibold text-[#6B1E2B] hover:underline cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={onClearAll}
+                        className="text-[11px] font-mono font-semibold text-[#B94A55] hover:underline cursor-pointer"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="divide-y divide-[#6B1E2B]/10 max-h-80 overflow-y-auto">

@@ -73,11 +73,11 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         <div className="flex items-center gap-2 mb-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#6B1E2B] animate-pulse" />
           <span className="text-xs font-mono font-bold tracking-wider text-[#6B1E2B] uppercase">
-            DEVORA INTELLIGENCE // TEACHER BRIEF
+            DEVORA INTELLIGENCE // HOME
           </span>
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-[#2B2020] tracking-tight mb-1">
-          Your Classroom &amp; Faculty Summary
+          Welcome Home — Your Campus Overview
         </h2>
         <p className="text-sm text-[#756565] font-medium">
           Real-time overview of your students, pending approvals, and campus notices.

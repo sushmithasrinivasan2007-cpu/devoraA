@@ -6,6 +6,8 @@ import { Sidebar } from './components/Sidebar';
 import { AdminDailyBrief } from './components/AdminDailyBrief';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
+import { StudentCalendarModule } from './components/StudentCalendarModule';
+import { StudentMarksModule } from './components/StudentMarksModule';
 
 import { MaintenanceModule } from './components/MaintenanceModule';
 import { AttendanceModule } from './components/AttendanceModule';
@@ -125,6 +127,11 @@ export function App() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
+  const handleClearAllNotifications = async () => {
+    await api.clearAllNotifications();
+    setNotifications([]);
+  };
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -139,12 +146,28 @@ export function App() {
       {/* Top Header */}
       <Header
         currentRole={currentRole}
-        onRoleChange={(role) => setCurrentRole(role)}
+        onRoleChange={(role) => {
+          setCurrentRole(role);
+          if (role === 'ADMIN') setLoggedInName('Dr. Alistair Vance');
+          else if (role === 'TEACHER') {
+            setLoggedInName('Sarah Jenkins');
+            if (currentTab === 'directory' || currentTab === 'sms') setCurrentTab('dashboard');
+          }
+          else if (role === 'STUDENT') {
+            setLoggedInName('Aiden Sharma');
+            if (currentTab === 'directory' || currentTab === 'attendance' || currentTab === 'sms') setCurrentTab('dashboard');
+          }
+          else if (role === 'PARENT') {
+            setLoggedInName('Sunita Sharma');
+            if (currentTab === 'directory' || currentTab === 'attendance' || currentTab === 'sms') setCurrentTab('dashboard');
+          }
+        }}
         loggedInName={loggedInName}
         onLogout={handleLogout}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
         onMarkAllRead={handleMarkAllNotificationsRead}
+        onClearAll={handleClearAllNotifications}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
       />
 
@@ -292,8 +315,6 @@ export function App() {
                       brief={dailyBrief}
                       loggedInName={loggedInName}
                       students={students}
-                      leaveRequests={leaveRequests}
-                      requests={requests}
                       announcements={announcements}
                       onNavigateTab={(tab) => setCurrentTab(tab)}
                     />
@@ -301,9 +322,28 @@ export function App() {
                 </>
               )}
 
+              {/* TAB: STUDENT CALENDAR & ATTENDANCE */}
+              {currentTab === 'calendar' && currentRole === 'STUDENT' && (
+                <div className="animate-in fade-in duration-150">
+                  <StudentCalendarModule
+                    student={students.find(s => s.name === loggedInName) || students[0]}
+                    loggedInName={loggedInName}
+                  />
+                </div>
+              )}
+
+              {/* TAB: STUDENT MARKS & RESULTS */}
+              {currentTab === 'marks' && currentRole === 'STUDENT' && (
+                <div className="animate-in fade-in duration-150">
+                  <StudentMarksModule
+                    student={students.find(s => s.name === loggedInName) || students[0]}
+                    loggedInName={loggedInName}
+                  />
+                </div>
+              )}
 
               {/* TAB 3: CAMPUS MAINTENANCE */}
-              {currentTab === 'maintenance' && (
+              {currentTab === 'maintenance' && currentRole !== 'STUDENT' && (
                 <div className="animate-in fade-in duration-150">
                   <MaintenanceModule
                     issues={maintenance}
@@ -326,7 +366,7 @@ export function App() {
               )}
 
               {/* TAB 5: SMART REQUESTS */}
-              {currentTab === 'requests' && (
+              {currentTab === 'requests' && currentRole !== 'STUDENT' && (
                 <div className="animate-in fade-in duration-150">
                   <SmartRequestsModule
                     requests={requests}
@@ -337,18 +377,19 @@ export function App() {
               )}
 
               {/* TAB 6: LEAVE MANAGEMENT */}
-              {currentTab === 'leave' && (
+              {currentTab === 'leave' && currentRole !== 'STUDENT' && (
                 <div className="animate-in fade-in duration-150">
                   <LeaveModule
                     leaves={leaveRequests}
                     currentRole={currentRole}
+                    loggedInName={loggedInName}
                     onRefresh={loadData}
                   />
                 </div>
               )}
 
-              {/* TAB 7: ROSTER & STAFF DIRECTORY */}
-              {currentTab === 'directory' && (
+              {/* TAB 7: STAFF DIRECTORY */}
+              {currentTab === 'directory' && currentRole === 'ADMIN' && (
                 <div className="animate-in fade-in duration-150">
                   <DirectoryModule
                     students={students}
@@ -370,7 +411,7 @@ export function App() {
                 </div>
               )}
 
-              {/* TAB 9: MSG91 SMS GATEWAY & PREFERENCES */}
+              {/* TAB 9: CAMPUS MAILS & NOTIFICATIONS */}
               {currentTab === 'sms' && (
                 <div className="animate-in fade-in duration-150">
                   <SMSGatewayModule

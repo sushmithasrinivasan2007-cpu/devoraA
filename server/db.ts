@@ -39,6 +39,7 @@ export class CampusDatabase {
   public maintenance: MaintenanceIssue[] = [];
   public notifications: NotificationItem[] = [];
   public emailLogs: EmailLog[] = [];
+  public resetTokens: Record<string, string> = {};
   public importValidationSummary: ImportValidationSummary | null = null;
 
   // Academic Configuration & Dynamic Attendance Entities
@@ -95,7 +96,8 @@ export class CampusDatabase {
         department: 'Operations',
         email: 'director@devora.edu',
         phone: '+15550192831',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        password: 'admin123'
       },
       {
         id: 'usr-tch-08',
@@ -106,7 +108,8 @@ export class CampusDatabase {
         email: 's.jenkins@devora.edu',
         phone: '+15550192832',
         status: 'ACTIVE',
-        assigned_classes: ['8A', '8B']
+        assigned_classes: ['8A', '8B'],
+        password: 'teacher123'
       },
       {
         id: 'usr-mnt-03',
@@ -116,7 +119,8 @@ export class CampusDatabase {
         department: 'Facilities & Maintenance',
         email: 'rajesh.k@devora.edu',
         phone: '+15550192833',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        password: 'staff123'
       },
       {
         id: 'usr-its-02',
@@ -126,7 +130,8 @@ export class CampusDatabase {
         department: 'Information Technology',
         email: 'e.rostova@devora.edu',
         phone: '+15550192834',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        password: 'staff123'
       },
       {
         id: 'usr-tch-10',
@@ -137,7 +142,44 @@ export class CampusDatabase {
         email: 'm.chen@devora.edu',
         phone: '+15550192835',
         status: 'ACTIVE',
-        assigned_classes: ['10A']
+        assigned_classes: ['10A'],
+        password: 'teacher123'
+      },
+      {
+        id: 'usr-tch-sam1',
+        name: 'Sam Faculty',
+        employee_id: 'EMP-TCH-SAM1',
+        role_title: 'Teacher',
+        department: 'Academics',
+        email: 'sameekshamjain7801@gmail.com',
+        phone: '+15550192890',
+        status: 'ACTIVE',
+        assigned_classes: ['CS101', 'AI Lab'],
+        password: 'samPassword123'
+      },
+      {
+        id: 'usr-tch-sam2',
+        name: 'Sam Faculty',
+        employee_id: 'EMP-TCH-SAM2',
+        role_title: 'Teacher',
+        department: 'Academics',
+        email: 'samjainn313@gmail.com',
+        phone: '+15550192891',
+        status: 'ACTIVE',
+        assigned_classes: ['CS102'],
+        password: 'samPassword123'
+      },
+      {
+        id: 'usr-tch-sam3',
+        name: 'Sam Faculty',
+        employee_id: 'EMP-TCH-SAM3',
+        role_title: 'Teacher',
+        department: 'Academics',
+        email: 'sam@devora.edu',
+        phone: '+15550192892',
+        status: 'ACTIVE',
+        assigned_classes: ['CS103'],
+        password: 'samPassword123'
       }
     ];
 

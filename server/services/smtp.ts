@@ -92,10 +92,11 @@ export async function dispatchEmail(
     htmlContent?: string;
   } = {}
 ): Promise<EmailDispatchResult> {
-  const fromName = process.env.SMTP_FROM_NAME || 'Devora AI Campus Operations';
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'notifications@devora-campus.edu';
+  const fromName = process.env.SMTP_FROM_NAME?.trim() || 'Devora AI Campus Operations';
+  const userEmail = process.env.SMTP_USER?.trim() || '';
+  const fromEmail = process.env.SMTP_FROM_EMAIL?.trim() || userEmail;
   const triggerEvent = options.triggerEvent || 'General Campus Notification';
-  const recipientName = options.recipientName || 'Campus Member';
+  const recipientName = options.recipientName || '';
   const now = new Date().toISOString();
 
   const formattedHtml = options.htmlContent || `
@@ -105,11 +106,10 @@ export async function dispatchEmail(
         <span style="font-size: 12px; color: #756565; text-transform: uppercase; letter-spacing: 1px;">${triggerEvent}</span>
       </div>
       <div style="background-color: #FFFFFF; padding: 20px; border-radius: 8px; border: 1px solid rgba(107,30,43,0.1); margin-bottom: 20px;">
-        <p style="font-size: 15px; line-height: 1.6; color: #2B2020; margin: 0 0 12px 0;">Hello <strong>${recipientName}</strong>,</p>
+        ${recipientName ? `<p style="font-size: 15px; line-height: 1.6; color: #2B2020; margin: 0 0 12px 0;">Hello <strong>${recipientName}</strong>,</p>` : ''}
         <p style="font-size: 14px; line-height: 1.6; color: #3D2D2D; margin: 0;">${content}</p>
       </div>
       <div style="text-align: center; font-size: 12px; color: #756565; border-top: 1px solid #E8DDCA; padding-top: 16px;">
-        <p style="margin: 0 0 4px 0;">This is an automated operational notification dispatched by Devora AI Campus Operations System.</p>
         <p style="margin: 0;">Timestamp: ${new Date().toLocaleString()}</p>
       </div>
     </div>
@@ -131,7 +131,7 @@ export async function dispatchEmail(
       simulated: true,
       delivery_time: now,
       response_details: {
-        note: 'SMTP credentials not configured in environment. Event recorded in Devora SMTP Email Gateway Log.'
+        note: 'SMTP credentials not configured in environment. Event recorded in local simulation mode.'
       }
     };
   }
@@ -140,12 +140,41 @@ export async function dispatchEmail(
     const info = await client.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to: recipientName ? `"${recipientName}" <${recipientEmail}>` : recipientEmail,
+      replyTo: fromEmail,
       subject: subject,
       text: content,
-      html: formattedHtml
+      html: formattedHtml,
+      headers: {
+        'X-Mailer': 'Devora Campus Mailer',
+        'X-Priority': '3'
+      }
     });
 
-    console.log(`[SMTP DELIVERED] To ${recipientEmail} (MessageId: ${info.messageId})`);
+    const isAccepted = Array.isArray(info.accepted) && info.accepted.length > 0;
+    const isRejected = Array.isArray(info.rejected) && info.rejected.length > 0;
+
+    if (!isAccepted || isRejected) {
+      console.warn(`[SMTP REJECTED] Recipient rejected: ${recipientEmail}`, info.rejected);
+      return {
+        status: 'FAILED',
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        subject,
+        trigger_event: triggerEvent,
+        message: content,
+        html: formattedHtml,
+        simulated: false,
+        delivery_time: now,
+        response_details: {
+          accepted: info.accepted,
+          rejected: info.rejected,
+          response: info.response,
+          error: 'Recipient address was rejected by the mail server.'
+        }
+      };
+    }
+
+    console.log(`[SMTP DELIVERED] To ${recipientEmail} (MessageId: ${info.messageId}, Response: ${info.response})`);
     return {
       status: 'DELIVERED',
       recipient_email: recipientEmail,
@@ -158,24 +187,25 @@ export async function dispatchEmail(
       delivery_time: now,
       response_details: {
         messageId: info.messageId,
-        response: info.response
+        response: info.response,
+        accepted: info.accepted
       }
     };
   } catch (err: any) {
-    console.warn(`[SMTP DISPATCH FALLBACK] Error sending to ${recipientEmail}: ${err.message}`);
+    console.error(`[SMTP DISPATCH FAILED] Error sending to ${recipientEmail}: ${err.message}`);
     return {
-      status: 'SIMULATED',
+      status: 'FAILED',
       recipient_email: recipientEmail,
       recipient_name: recipientName,
       subject,
       trigger_event: triggerEvent,
       message: content,
       html: formattedHtml,
-      simulated: true,
+      simulated: false,
       delivery_time: now,
       response_details: {
         error: err.message,
-        note: 'Fallback to simulated audit log due to SMTP delivery exception.'
+        note: `Mail delivery failed: ${err.message}`
       }
     };
   }

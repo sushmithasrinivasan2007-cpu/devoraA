@@ -39,6 +39,7 @@ export interface Student {
   attendance_rate: number;
   medical_notes?: string;
   status: 'ACTIVE' | 'ON_LEAVE' | 'TRANSFERRED';
+  password?: string;
 }
 
 export interface ImportValidationSummary {
@@ -68,12 +69,13 @@ export interface Staff {
   id: string;
   name: string;
   employee_id: string;
-  role_title: 'Teacher' | 'Maintenance Lead' | 'Administration' | 'IT Support' | 'Campus Nurse';
-  department: 'Academics' | 'Facilities & Maintenance' | 'Operations' | 'Information Technology' | 'Health Services';
+  role_title: 'Teacher' | 'Maintenance Lead' | 'Administration' | 'IT Support' | 'Campus Nurse' | (string & {});
+  department: 'Academics' | 'Facilities & Maintenance' | 'Operations' | 'Information Technology' | 'Health Services' | (string & {});
   email: string;
   phone: string;
   status: 'ACTIVE' | 'ON_LEAVE';
   assigned_classes?: string[];
+  password?: string;
 }
 
 export interface AttendanceRecord {

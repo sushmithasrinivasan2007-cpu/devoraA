@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Home,
   LayoutDashboard,
   Wrench,
   Users,
@@ -7,6 +8,8 @@ import {
   CalendarCheck,
   GraduationCap,
   Calendar,
+  CalendarDays,
+  BarChart3,
   Mail,
   X
 } from 'lucide-react';
@@ -42,15 +45,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'Operations Brief',
-      icon: LayoutDashboard,
+      label: 'Home',
+      icon: Home,
       roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar & Attendance',
+      icon: CalendarDays,
+      roles: ['STUDENT']
+    },
+    {
+      id: 'marks',
+      label: 'Marks & Results',
+      icon: BarChart3,
+      roles: ['STUDENT']
     },
     {
       id: 'maintenance',
       label: 'Campus Facilities',
       icon: Wrench,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER', 'PARENT']
     },
     {
       id: 'attendance',
@@ -62,19 +77,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'requests',
       label: 'Smart Requests',
       icon: FileText,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER', 'PARENT']
     },
     {
       id: 'leave',
       label: 'Leave Approvals',
       icon: CalendarCheck,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT']
+      roles: ['ADMIN', 'TEACHER']
     },
     {
       id: 'directory',
-      label: 'Roster & Staff',
+      label: 'Staff Directory',
       icon: GraduationCap,
-      roles: ['ADMIN', 'TEACHER']
+      roles: ['ADMIN']
     },
     {
       id: 'timetable',
@@ -84,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'sms',
-      label: 'SMTP Mail Gateway',
+      label: 'Mails',
       icon: Mail,
       roles: ['ADMIN'],
       badge: unreadCount > 0 ? unreadCount : undefined

@@ -97,7 +97,7 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
             </span>
           </h1>
           <p className="text-sm text-[#756565]">
-            Real-time reporting, automated classification, technician dispatch, and SMTP email notification delivery.
+            Real-time reporting, automated classification, technician dispatch, and automated email notification delivery.
           </p>
         </div>
 
@@ -237,7 +237,7 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
 
                     {(issue.email_sent || issue.sms_sent) && (
                       <span className="text-[10px] font-mono text-[#6B1E2B] font-semibold flex items-center gap-1 bg-[#FFF8EC] px-1.5 py-0.5 rounded-md border border-[#6B1E2B]/20">
-                        <Mail className="w-2.5 h-2.5" /> SMTP Dispatched
+                        <Mail className="w-2.5 h-2.5" /> Email Dispatched
                       </span>
                     )}
                   </div>
@@ -412,7 +412,7 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
 
               <div className="text-xs font-mono text-[#756565] flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-[#C58A35]" />
-                <span>Submitting triggers in-app alert &amp; SMTP email dispatch to technician.</span>
+                <span>Submitting triggers in-app alert &amp; email dispatch to technician.</span>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#6B1E2B]/15">

@@ -78,6 +78,20 @@ export const api = {
     if (!res.ok) throw new Error('Failed to update student');
     return res.json();
   },
+  updateStudentPassword: async (id: string, password: string, notify: boolean = true): Promise<{ success: boolean; message: string; error?: string }> => {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, notify })
+    });
+    return res.json();
+  },
+  deleteStudent: async (id: string): Promise<{ success: boolean }> => {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
 
   // Excel Unified Student Directory Import APIs
   getImportPreview: async (): Promise<{ validation: any; sampleStudents: Student[] }> => {
@@ -122,6 +136,28 @@ export const api = {
   // Staff
   getStaff: async (): Promise<Staff[]> => {
     const res = await fetch('/api/staff');
+    return res.json();
+  },
+  createStaff: async (data: Partial<Staff> & { send_welcome_email?: boolean }): Promise<Staff> => {
+    const res = await fetch('/api/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  deleteStaff: async (id: string): Promise<{ success: boolean }> => {
+    const res = await fetch(`/api/staff/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
+  updateStaffPassword: async (id: string, password: string, notify: boolean = true): Promise<{ success: boolean; message: string; error?: string }> => {
+    const res = await fetch(`/api/staff/${encodeURIComponent(id)}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, notify })
+    });
     return res.json();
   },
 
@@ -490,6 +526,48 @@ export const api = {
   },
   markAllNotificationsRead: async () => {
     const res = await fetch('/api/notifications/read-all', { method: 'POST' });
+    return res.json();
+  },
+  clearAllNotifications: async () => {
+    const res = await fetch('/api/notifications/clear-all', { method: 'POST' });
+    return res.json();
+  },
+
+  // Auth & Faculty Credentials
+  login: async (credentials: { username?: string; email?: string; password?: string; role?: string }) => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    return res.json();
+  },
+  getFacultyAuthList: async () => {
+    const res = await fetch('/api/auth/faculty');
+    return res.json();
+  },
+  createFacultyPassword: async (email: string, password: string) => {
+    const res = await fetch('/api/auth/create-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return res.json();
+  },
+  forgotPassword: async (email: string) => {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    return res.json();
+  },
+  resetPassword: async (email: string, code: string, new_password: string) => {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, new_password })
+    });
     return res.json();
   },
 
