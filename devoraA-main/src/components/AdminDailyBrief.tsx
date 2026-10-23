@@ -166,7 +166,7 @@ export const AdminDailyBrief: React.FC<AdminDailyBriefProps> = ({
               {brief.urgent_maintenance_count} Urgent Action Items
             </span>
             <span className="text-[11px] text-[#9A8989] mt-0.5 block">
-              Science Lab 2 &amp; Class 8A
+              Science Lab 2 &amp; BCA Lab 1
             </span>
           </div>
         </div>

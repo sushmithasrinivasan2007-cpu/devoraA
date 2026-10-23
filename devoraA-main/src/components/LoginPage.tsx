@@ -83,11 +83,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       <div className="pointer-events-none absolute top-1/2 left-1/4 w-[300px] h-[300px] bg-[#E8DDCA]/80 rounded-full blur-[100px]" />
 
       {/* Logo & Brand */}
-      <div className="text-center mb-8 z-10">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#6B1E2B] shadow-lg shadow-[#6B1E2B]/30 mb-4">
-          <Sparkles className="w-7 h-7 text-[#FFF8EC]" />
+      <div className="text-center mb-8 z-10 flex flex-col items-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white p-1 border border-[#6B1E2B]/20 shadow-lg shadow-[#6B1E2B]/20 mb-3 overflow-hidden">
+          <img src="/logo.jpg" alt="Devora AI Logo" className="w-full h-full object-contain rounded-xl" />
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-[#2B2020] tracking-tight">Devora AI</h1>
+        <p className="text-xs font-mono text-[#756565] mt-1 tracking-wide">The Future of Campus Management</p>
       </div>
 
       {/* Main login card */}

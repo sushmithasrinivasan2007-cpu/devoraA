@@ -1075,12 +1075,49 @@ async function startServer() {
     res.status(201).json(newAnn);
   });
 
-  // 15. Timetable
+  // 15. Timetable Schedule
   app.get("/api/timetable", (req, res) => {
-    const { class_grade, section } = req.query;
+    const { course_id, semester_id, class_grade, section_id, section, day_of_week } = req.query;
     let list = db.timetable;
-    if (class_grade) list = list.filter(t => t.class_grade === String(class_grade));
-    if (section) list = list.filter(t => t.section === String(section));
+
+    if (course_id) {
+      list = list.filter(t => !t.course_id || t.course_id === String(course_id));
+    }
+
+    if (semester_id || class_grade) {
+      const semMatch = String(semester_id || class_grade).trim().toLowerCase();
+      const semFiltered = list.filter(t =>
+        (t.semester_id && t.semester_id.toLowerCase() === semMatch) ||
+        (t.class_grade && t.class_grade.toLowerCase() === semMatch) ||
+        (t.semester_name && t.semester_name.toLowerCase().includes(semMatch)) ||
+        (semMatch.includes(String(t.class_grade).toLowerCase()))
+      );
+      if (semFiltered.length > 0) {
+        list = semFiltered;
+      }
+    }
+
+    if (section_id || section) {
+      const secMatch = String(section_id || section).trim().toLowerCase();
+      const secFiltered = list.filter(t =>
+        (t.section_id && t.section_id.toLowerCase() === secMatch) ||
+        (t.section && t.section.toLowerCase() === secMatch) ||
+        (t.section && secMatch.includes(t.section.toLowerCase())) ||
+        (t.section && t.section.toLowerCase().includes(secMatch))
+      );
+      if (secFiltered.length > 0) {
+        list = secFiltered;
+      }
+    }
+
+    if (day_of_week) {
+      const dayMatch = String(day_of_week).trim().toLowerCase();
+      const dayFiltered = list.filter(t => t.day_of_week.toLowerCase() === dayMatch);
+      if (dayFiltered.length > 0) {
+        list = dayFiltered;
+      }
+    }
+
     res.json(list);
   });
 

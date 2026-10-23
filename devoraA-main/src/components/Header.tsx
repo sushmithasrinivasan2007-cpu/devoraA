@@ -24,19 +24,19 @@ const roleProfiles: Record<Role, { label: string; name: string; title: string; i
   TEACHER: {
     label: 'Teacher / Faculty',
     name: 'Sarah Jenkins',
-    title: 'Faculty & Class 8A Head',
+    title: 'Faculty & BCA Program Head',
     icon: Briefcase
   },
   STUDENT: {
     label: 'Student Portal',
     name: 'Aiden Sharma',
-    title: 'Grade 8 (STU-8A-01)',
+    title: 'BCA • 3rd Semester',
     icon: GraduationCap
   },
   PARENT: {
     label: 'Parent / Guardian',
     name: 'Sunita Sharma',
-    title: 'Guardian (STU-8A-01)',
+    title: 'Guardian (Aiden Sharma • BCA)',
     icon: User
   }
 };
@@ -76,10 +76,12 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          <div className="w-10 h-10 rounded-xl bg-[#6B1E2B] border-2 border-[#FFF8EC] flex items-center justify-center shadow-md shadow-[#6B1E2B]/20">
-            <span className="font-mono font-extrabold text-[#FFF8EC] text-base tracking-tighter">
-              D<span className="text-[#E8DDCA]">A</span>
-            </span>
+          <div className="w-10 h-10 rounded-xl bg-white border border-[#6B1E2B]/20 flex items-center justify-center shadow-md shadow-[#6B1E2B]/10 overflow-hidden shrink-0">
+            <img
+              src="/logo.jpg"
+              alt="Devora AI Logo"
+              className="w-full h-full object-contain p-0.5"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">

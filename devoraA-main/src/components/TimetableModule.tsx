@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { TimetableSlot, Announcement, Role } from '../types';
+import { TimetableSlot, Announcement, Role, Course, Semester, Section } from '../types';
 import { api } from '../services/api';
-import { Calendar, Bell, Plus, Send, Clock, User, BookOpen, Sparkles, Mail } from 'lucide-react';
+import { Calendar, Bell, Plus, Send, Clock, User, BookOpen, Sparkles, Mail, Layers } from 'lucide-react';
 
 interface TimetableModuleProps {
   announcements: Announcement[];
@@ -17,8 +17,17 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
   id = "timetable-module"
 }) => {
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
-  const [selectedClass, setSelectedClass] = useState('8');
-  const [selectedSection, setSelectedSection] = useState('A');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+
+  // Selection states matching AttendanceModule
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [selectedDay, setSelectedDay] = useState<'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday'>('Monday');
+  const [isLoading, setIsLoading] = useState(false);
+
   const [showNoticeModal, setShowNoticeModal] = useState(false);
 
   // New announcement state
@@ -29,9 +38,78 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
   const [emailBroadcast, setEmailBroadcast] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Load courses on mount
   useEffect(() => {
-    api.getTimetable(selectedClass, selectedSection).then(setTimetable).catch(console.error);
-  }, [selectedClass, selectedSection]);
+    api.getCourses().then((crsList) => {
+      setCourses(crsList || []);
+      const defaultCourse = crsList.find(c => c.code === 'BCA') || crsList[0];
+      if (defaultCourse) {
+        setSelectedCourseId(defaultCourse.id);
+      }
+    }).catch(console.error);
+  }, []);
+
+  // Load Semesters when Course changes (matches AttendanceModule)
+  useEffect(() => {
+    if (!selectedCourseId) {
+      setSemesters([]);
+      setSelectedSemesterId('');
+      return;
+    }
+
+    api.getSemesters(selectedCourseId).then((semList) => {
+      setSemesters(semList || []);
+      if (semList && semList.length > 0) {
+        // Prefer 3rd Semester or first available, exactly matching AttendanceModule
+        const pref = semList.find(s => s.number === 3) || semList[0];
+        setSelectedSemesterId(pref.id);
+      } else {
+        setSelectedSemesterId('');
+      }
+    }).catch(console.error);
+  }, [selectedCourseId]);
+
+  // Load Sections when Semester changes (matches AttendanceModule)
+  useEffect(() => {
+    if (!selectedCourseId || !selectedSemesterId) {
+      setSections([]);
+      setSelectedSectionId('');
+      return;
+    }
+
+    api.getSections(selectedCourseId, selectedSemesterId).then((secList) => {
+      setSections(secList || []);
+      if (secList && secList.length > 0) {
+        setSelectedSectionId(secList[0].id);
+      } else {
+        setSelectedSectionId('');
+      }
+    }).catch(console.error);
+  }, [selectedCourseId, selectedSemesterId]);
+
+  // Refresh Timetable data whenever selection or day changes
+  useEffect(() => {
+    if (!selectedSemesterId) return;
+
+    setIsLoading(true);
+    const activeSem = semesters.find(s => s.id === selectedSemesterId);
+    const activeSec = sections.find(s => s.id === selectedSectionId);
+
+    const classGrade = activeSem ? String(activeSem.number) : undefined;
+    const sectionName = activeSec ? activeSec.name : undefined;
+
+    api.getTimetable(
+      classGrade,
+      sectionName,
+      selectedDay,
+      selectedCourseId,
+      selectedSemesterId,
+      selectedSectionId
+    ).then((data) => {
+      setTimetable(data || []);
+    }).catch(console.error)
+    .finally(() => setIsLoading(false));
+  }, [selectedCourseId, selectedSemesterId, selectedSectionId, selectedDay, semesters, sections]);
 
   const handlePublishNotice = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +134,10 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
       setIsPublishing(false);
     }
   };
+
+  const currentCourse = courses.find(c => c.id === selectedCourseId);
+  const currentSemester = semesters.find(s => s.id === selectedSemesterId);
+  const currentSection = sections.find(s => s.id === selectedSectionId);
 
   return (
     <div id={id} className="space-y-6">
@@ -86,66 +168,136 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Timetable Schedule */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="p-4 rounded-2xl bg-[#FFF8EC]/90 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_-4px_rgba(107,30,43,0.06)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#6B1E2B]" />
-              <span className="text-sm font-bold text-[#2B2020] font-mono uppercase tracking-wider">
-                Monday Class Schedule
+          <div className="p-4 rounded-2xl bg-[#FFF8EC]/90 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_-4px_rgba(107,30,43,0.06)] space-y-3">
+            {/* Top Bar: Title & Day of Week Selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#6B1E2B]/10">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#6B1E2B]" />
+                <span className="text-sm font-bold text-[#2B2020] font-mono uppercase tracking-wider">
+                  {selectedDay} Academic Schedule
+                </span>
+              </div>
+
+              {/* Day of Week Selector Buttons */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const).map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setSelectedDay(day)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                      selectedDay === day
+                        ? 'bg-[#6B1E2B] text-white shadow-xs'
+                        : 'bg-[#F3EBDD]/80 text-[#756565] hover:text-[#2B2020] hover:bg-[#F3EBDD]'
+                    }`}
+                  >
+                    {day.slice(0, 3)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Academic Dropdowns: Course, Semester, Section (Matching Attendance Module) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+              {/* Course */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-mono font-bold text-[#756565] uppercase">Course</label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full bg-[#F3EBDD]/80 border border-[#6B1E2B]/20 rounded-xl px-3 py-2 text-xs font-bold text-[#6B1E2B] outline-none focus:border-[#6B1E2B] cursor-pointer"
+                >
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.code} – {c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Semester */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-mono font-bold text-[#756565] uppercase">Semester</label>
+                <select
+                  value={selectedSemesterId}
+                  onChange={(e) => setSelectedSemesterId(e.target.value)}
+                  className="w-full bg-[#F3EBDD]/80 border border-[#6B1E2B]/20 rounded-xl px-3 py-2 text-xs font-semibold text-[#2B2020] outline-none focus:border-[#6B1E2B] cursor-pointer"
+                >
+                  {semesters.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Section */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-mono font-bold text-[#756565] uppercase">Section</label>
+                <select
+                  value={selectedSectionId}
+                  onChange={(e) => setSelectedSectionId(e.target.value)}
+                  className="w-full bg-[#F3EBDD]/80 border border-[#6B1E2B]/20 rounded-xl px-3 py-2 text-xs font-semibold text-[#2B2020] outline-none focus:border-[#6B1E2B] cursor-pointer"
+                >
+                  {sections.map(sec => (
+                    <option key={sec.id} value={sec.id}>{sec.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Selection Banner */}
+            <div className="text-[11px] font-mono text-[#756565] pt-1 flex items-center justify-between">
+              <span>
+                Schedule for: <strong className="text-[#2B2020]">{currentCourse?.code || 'BCA'} {currentSemester?.name || ''} ({currentSection?.name || 'All Sections'})</strong>
+              </span>
+              <span className="text-[#6B1E2B] font-bold">
+                {timetable.length} Period{timetable.length === 1 ? '' : 's'}
               </span>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-[#756565]">Class:</span>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-[#F3EBDD]/80 text-[#2B2020] font-medium px-2.5 py-1 rounded-lg border border-[#6B1E2B]/20 outline-none cursor-pointer focus:border-[#6B1E2B]"
-              >
-                <option value="8">Class 8</option>
-                <option value="10">Class 10</option>
-              </select>
-
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="bg-[#F3EBDD]/80 text-[#6B1E2B] font-bold px-2.5 py-1 rounded-lg border border-[#6B1E2B]/20 outline-none cursor-pointer focus:border-[#6B1E2B]"
-              >
-                <option value="A">Sec A</option>
-                <option value="B">Sec B</option>
-              </select>
+          {/* Timetable Period Cards Grid */}
+          {isLoading ? (
+            <div className="p-12 rounded-2xl bg-[#FFF8EC]/60 border border-[#6B1E2B]/10 text-center font-mono text-xs text-[#756565] animate-pulse">
+              Loading schedule for selected class &amp; section...
             </div>
-          </div>
+          ) : timetable.length === 0 ? (
+            <div className="p-12 rounded-2xl bg-[#FFF8EC]/80 border border-[#6B1E2B]/15 text-center space-y-2">
+              <Calendar className="w-8 h-8 text-[#9A8989] mx-auto opacity-60" />
+              <p className="text-sm font-bold text-[#2B2020]">No Scheduled Classes Found</p>
+              <p className="text-xs font-mono text-[#756565]">
+                No timetable entries registered for {currentSemester?.name || 'this semester'} ({currentSection?.name || 'this section'}) on {selectedDay}.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {timetable.map((slot) => (
+                <div
+                  key={slot.id}
+                  className="p-4 rounded-2xl bg-[#FFF8EC]/85 backdrop-blur-md border border-white/60 shadow-[0_4px_16px_-4px_rgba(107,30,43,0.06)] hover:shadow-[0_8px_25px_-6px_rgba(107,30,43,0.12)] hover:border-[#6B1E2B]/30 transition-all space-y-2.5"
+                >
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-[#6B1E2B] font-bold bg-[#6B1E2B]/10 px-2 py-0.5 rounded-md border border-[#6B1E2B]/20">
+                      Period {slot.period}
+                    </span>
+                    <span className="text-[#756565] flex items-center gap-1 font-medium">
+                      <Clock className="w-3 h-3 text-[#6B1E2B]" /> {slot.time_range}
+                    </span>
+                  </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {timetable.map((slot) => (
-              <div
-                key={slot.id}
-                className="p-4 rounded-2xl bg-[#FFF8EC]/85 backdrop-blur-md border border-white/60 shadow-[0_4px_16px_-4px_rgba(107,30,43,0.06)] hover:shadow-[0_8px_25px_-6px_rgba(107,30,43,0.12)] hover:border-[#6B1E2B]/30 transition-all space-y-2.5"
-              >
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-[#6B1E2B] font-bold bg-[#6B1E2B]/10 px-2 py-0.5 rounded-md border border-[#6B1E2B]/20">
-                    Period {slot.period}
-                  </span>
-                  <span className="text-[#756565] flex items-center gap-1 font-medium">
-                    <Clock className="w-3 h-3 text-[#6B1E2B]" /> {slot.time_range}
-                  </span>
-                </div>
+                  <div className="text-base font-bold text-[#2B2020]">
+                    {slot.subject}
+                  </div>
 
-                <div className="text-base font-bold text-[#2B2020]">
-                  {slot.subject}
+                  <div className="flex items-center justify-between text-xs font-mono text-[#756565] pt-2 border-t border-[#6B1E2B]/10">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-[#6B1E2B]" /> {slot.teacher_name}
+                    </span>
+                    <span className="text-[#6B1E2B] font-bold bg-[#6B1E2B]/10 px-2 py-0.5 rounded-md border border-[#6B1E2B]/20">
+                      {slot.room}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="flex items-center justify-between text-xs font-mono text-[#756565] pt-2 border-t border-[#6B1E2B]/10">
-                  <span className="flex items-center gap-1">
-                    <User className="w-3 h-3 text-[#6B1E2B]" /> {slot.teacher_name}
-                  </span>
-                  <span className="text-[#6B1E2B] font-bold bg-[#6B1E2B]/10 px-2 py-0.5 rounded-md border border-[#6B1E2B]/20">
-                    {slot.room}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Col: Campus Notices */}

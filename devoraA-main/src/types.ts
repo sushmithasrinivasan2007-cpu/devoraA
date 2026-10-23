@@ -91,6 +91,7 @@ export interface AttendanceRecord {
   course_id?: string;
   academic_year_id?: string;
   semester_id?: string;
+  semester_name?: string;
   register_number?: string;
 }
 
@@ -400,6 +401,11 @@ export interface TimetableSlot {
   id: string;
   class_grade: string;
   section: string;
+  course_id?: string;
+  course_code?: string;
+  semester_id?: string;
+  semester_name?: string;
+  section_id?: string;
   day_of_week: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
   period: number;
   time_range: string;

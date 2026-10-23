@@ -99,11 +99,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       className="w-64 bg-gradient-to-b from-[#42121C] via-[#521722] to-[#360E16] border-r border-[#6B1E2B]/40 flex flex-col justify-between p-4 shrink-0 shadow-xl text-[#FFF8EC] h-full"
     >
       <div className="space-y-6">
+        {/* Desktop Brand Header */}
+        <div className="hidden lg:flex items-center gap-3 px-2 pb-3 border-b border-white/10">
+          <div className="w-8 h-8 rounded-lg bg-white p-0.5 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            <img src="/logo.jpg" alt="Devora AI Logo" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <div className="font-terminal font-extrabold text-xs tracking-wider text-[#FFF8EC]">
+              DEVORA AI
+            </div>
+            <div className="text-[10px] font-mono text-[#E8DDCA]/70">
+              Campus Operations
+            </div>
+          </div>
+        </div>
+
         {/* Mobile Header with close button */}
         <div className="flex items-center justify-between lg:hidden pb-2 border-b border-white/10">
-          <span className="font-terminal font-bold text-sm tracking-wider text-[#FFF8EC]">
-            NAVIGATION
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-white p-0.5 overflow-hidden flex items-center justify-center shrink-0">
+              <img src="/logo.jpg" alt="Devora AI Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-terminal font-bold text-sm tracking-wider text-[#FFF8EC]">
+              DEVORA AI
+            </span>
+          </div>
           {onCloseMobile && (
             <button
               type="button"

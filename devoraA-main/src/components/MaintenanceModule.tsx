@@ -17,9 +17,9 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
   id = "maintenance-module"
 }) => {
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportTitle, setReportTitle] = useState('Projector not working in Class 8A');
-  const [reportDesc, setReportDesc] = useState('The ceiling projector in Class 8A fails to power on and HDMI signal flickers constantly during lectures.');
-  const [reportLocation, setReportLocation] = useState('Class 8A (West Wing, 2nd Floor)');
+  const [reportTitle, setReportTitle] = useState('Projector not working in BCA Lab 1');
+  const [reportDesc, setReportDesc] = useState('The ceiling projector in BCA Lab 1 fails to power on and HDMI signal flickers constantly during lectures.');
+  const [reportLocation, setReportLocation] = useState('BCA Lab 1 (West Wing, 2nd Floor)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiPreview, setAiPreview] = useState<{
     category: string;
@@ -342,7 +342,7 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
                     setReportTitle(e.target.value);
                   }}
                   onBlur={handleRunAIClassification}
-                  placeholder="e.g. Projector not working in Class 8A"
+                  placeholder="e.g. Projector not working in BCA Lab 1"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFF8EC] border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/20 outline-none font-mono text-sm"
                 />
               </div>
@@ -356,7 +356,7 @@ export const MaintenanceModule: React.FC<MaintenanceModuleProps> = ({
                   required
                   value={reportLocation}
                   onChange={(e) => setReportLocation(e.target.value)}
-                  placeholder="e.g. Class 8A (West Wing, 2nd Floor)"
+                  placeholder="e.g. BCA Lab 1 (West Wing, 2nd Floor)"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFF8EC] border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/20 outline-none font-mono text-sm"
                 />
               </div>
