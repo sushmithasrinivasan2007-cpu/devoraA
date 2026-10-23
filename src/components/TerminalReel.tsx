@@ -17,7 +17,7 @@ export const TerminalReel: React.FC<TerminalReelProps> = ({ onAskSuccess, id = "
   const [history, setHistory] = useState<{ query: string; answer: string; time: string }[]>([
     {
       query: "What needs my attention today?",
-      answer: "EXECUTIVE OPERATIONS BRIEF:\n• Overall attendance is at 95% with 2 repeat absences in Class 8B.\n• Science Lab 2 water pipe leakage requires verification with Rajesh Kumar.\n• 1 faculty medical leave request awaiting your sign-off.",
+      answer: "EXECUTIVE OPERATIONS BRIEF:\n• Overall attendance is at 95% with 2 repeat absences in BCA 3rd Semester Section 3B2.\n• Science Lab 2 water pipe leakage requires verification with Rajesh Kumar.\n• 1 faculty medical leave request awaiting your sign-off.",
       time: "08:15 AM"
     }
   ]);

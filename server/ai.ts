@@ -318,7 +318,7 @@ ${adminAttendance.missing_sessions_today > 0 ? `• Alert: Digital roll-call rem
     return `CAMPUS MAINTENANCE STATUS (${openIssues.length} Unresolved Issues):
 ${issueList || 'No unresolved issues.'}
 
-Action Required: High-priority water pipe leakage in Science Lab 2 is currently IN PROGRESS with Rajesh Kumar. Projector in 8A is pending technician review.`;
+Action Required: High-priority water pipe leakage in Science Lab 2 is currently IN PROGRESS with Rajesh Kumar. Projector in BCA Lab 1 is pending technician review.`;
   }
 
   if (q.includes('attention') || q.includes('needs my attention') || q.includes('daily operations') || q.includes('summarize')) {
@@ -343,7 +343,7 @@ SUBJECT: Operations & Campus Exhibition Updates for Tomorrow
 Please be advised of the following schedule adjustments for tomorrow:
 1. Normal morning roll-call commences at 08:30 AM in designated home rooms.
 2. The Annual Science & Technology Exhibition will open at 10:00 AM in the North Gymnasium.
-3. Class 8A and Science Lab 2 equipment upgrades and maintenance are scheduled to conclude prior to morning sessions.
+3. BCA Lab 1 and Science Lab 2 equipment upgrades and maintenance are scheduled to conclude prior to morning sessions.
 
 For administrative queries, contact student services via the Devora Operations Portal.
 

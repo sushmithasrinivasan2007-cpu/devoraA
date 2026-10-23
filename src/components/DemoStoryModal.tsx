@@ -41,15 +41,15 @@ export const DemoStoryModal: React.FC<DemoStoryModalProps> = ({
     {
       step: 2,
       title: "Teacher Reports Broken Projector",
-      desc: "Report filed: 'Projector not working in Class 8A (West Wing) - HDMI signal dead.'",
+      desc: "Report filed: 'Projector not working in BCA Lab 1 (West Wing) - HDMI signal dead.'",
       role: 'TEACHER' as Role,
       tab: 'maintenance',
       actionLabel: "Simulate Report Submission",
       run: async () => {
         await api.createMaintenance({
-          title: "Projector not working in Class 8A",
-          description: "The ceiling projector in Class 8A fails to power on and HDMI signal flickers constantly during lectures.",
-          location: "Class 8A (West Wing, 2nd Floor)",
+          title: "Projector not working in BCA Lab 1",
+          description: "The ceiling projector in BCA Lab 1 fails to power on and HDMI signal flickers constantly during lectures.",
+          location: "BCA Lab 1 (West Wing, 2nd Floor)",
           reported_by_name: "Sarah Jenkins",
           reported_by_role: "TEACHER"
         });
@@ -59,7 +59,7 @@ export const DemoStoryModal: React.FC<DemoStoryModalProps> = ({
     {
       step: 3,
       title: "Autonomous AI Issue Classification",
-      desc: "Devora AI autonomously extracts Category: Projector/Equipment, Priority: Medium, Location: Class 8A.",
+      desc: "Devora AI autonomously extracts Category: Projector/Equipment, Priority: Medium, Location: BCA Lab 1.",
       role: 'ADMIN' as Role,
       tab: 'maintenance',
       actionLabel: "Verify AI Classification",
@@ -96,7 +96,7 @@ export const DemoStoryModal: React.FC<DemoStoryModalProps> = ({
     {
       step: 6,
       title: "Maintenance Status: Set to In Progress",
-      desc: "Rajesh Kumar arrives at Class 8A and changes status from PENDING to IN PROGRESS.",
+      desc: "Rajesh Kumar arrives at BCA Lab 1 and changes status from PENDING to IN PROGRESS.",
       role: 'ADMIN' as Role,
       tab: 'maintenance',
       actionLabel: "Transition → In Progress",

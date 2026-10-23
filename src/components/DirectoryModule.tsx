@@ -25,8 +25,8 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
   // Add student form state
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
-  const [classGrade, setClassGrade] = useState('8');
-  const [section, setSection] = useState('A');
+  const [classGrade, setClassGrade] = useState('1');
+  const [section, setSection] = useState('Section 1st Neo');
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('+15550');
   const [medicalNotes, setMedicalNotes] = useState('');
@@ -339,7 +339,7 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
                     required
                     value={rollNumber}
                     onChange={(e) => setRollNumber(e.target.value)}
-                    placeholder="STU-8A-09"
+                    placeholder="BCA-2026-042"
                     className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all placeholder:text-[#9A8989]"
                   />
                 </div>

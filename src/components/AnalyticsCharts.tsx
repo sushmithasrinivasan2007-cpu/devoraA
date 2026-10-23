@@ -51,12 +51,35 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
 
   const COLORS = ['#6B1E2B', '#A85C68', '#C58A35', '#5F8F68', '#6C8799', '#42121C'];
 
-  // 3. Class Attendance Comparison
-  const classComparisonData = [
-    { class: 'Class 8A', rate: 95, absent: 1 },
-    { class: 'Class 8B', rate: 77, absent: 2 },
-    { class: 'Class 10A', rate: 98, absent: 0 },
-    { class: 'Class 10B', rate: 92, absent: 1 }
+  // 3. Semester Attendance Comparison (Dynamic from student data)
+  const semesterMap: Record<string, { total: number; sumRate: number; absent: number }> = {};
+  students.forEach(s => {
+    const semName = s.semester_name || `Sem ${s.class_grade}`;
+    if (!semesterMap[semName]) {
+      semesterMap[semName] = { total: 0, sumRate: 0, absent: 0 };
+    }
+    semesterMap[semName].total += 1;
+    semesterMap[semName].sumRate += s.attendance_rate || 90;
+    if ((s.attendance_rate || 100) < 80) {
+      semesterMap[semName].absent += 1;
+    }
+  });
+
+  const dynamicComparisonData = Object.entries(semesterMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([sem, stat]) => ({
+      class: sem.replace(' Semester', ' Sem'),
+      rate: stat.total > 0 ? Math.round(stat.sumRate / stat.total) : 92,
+      absent: stat.absent
+    }));
+
+  const classComparisonData = dynamicComparisonData.length > 0 ? dynamicComparisonData : [
+    { class: '1st Sem', rate: 94, absent: 3 },
+    { class: '2nd Sem', rate: 96, absent: 2 },
+    { class: '3rd Sem', rate: 92, absent: 5 },
+    { class: '4th Sem', rate: 95, absent: 3 },
+    { class: '5th Sem', rate: 91, absent: 6 },
+    { class: '6th Sem', rate: 97, absent: 1 }
   ];
 
   const tooltipCustomStyle = {
@@ -133,8 +156,8 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
           <h3 className="text-xs font-mono uppercase tracking-wider font-bold text-[#2B2020]">
             Section Attendance Variance
           </h3>
-          <span className="text-[11px] font-mono font-semibold text-[#B94A55] bg-[#B94A55]/12 px-2.5 py-0.5 rounded-full border border-[#B94A55]/20">
-            8B Needs Review
+          <span className="text-[11px] font-mono font-semibold text-[#6B1E2B] bg-[#6B1E2B]/10 px-2.5 py-0.5 rounded-full border border-[#6B1E2B]/20">
+            Semester Analytics
           </span>
         </div>
         <div className="h-56 w-full pt-2">

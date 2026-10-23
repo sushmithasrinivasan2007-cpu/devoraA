@@ -18,19 +18,19 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Students
 INSERT INTO public.students (id, name, roll_number, class_grade, section, guardian_name, guardian_phone, attendance_rate, medical_notes, status) VALUES
-('22222222-0000-0000-0000-000000000001', 'Aiden Sharma', 'STU-8A-01', '8', 'A', 'Sunita Sharma', '+15550981101', 96.5, 'Mild pollen allergy', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000002', 'Chloe Zhao', 'STU-8A-02', '8', 'A', 'Hao Zhao', '+15550981102', 98.0, 'None', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000003', 'Liam O''Connor', 'STU-8A-03', '8', 'A', 'Brigid O''Connor', '+15550981103', 74.2, 'Asthma inhaler in clinic', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000004', 'Maya Patel', 'STU-8A-04', '8', 'A', 'Karan Patel', '+15550981104', 92.5, 'None', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000005', 'Daniel Kim', 'STU-8B-01', '8', 'B', 'Grace Kim', '+15550981105', 78.4, 'None', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000006', 'Zara Mercer', 'STU-8B-02', '8', 'B', 'David Mercer', '+15550981106', 76.0, 'Nut allergy', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000007', 'Lucas Silva', 'STU-10A-01', '10', 'A', 'Camila Silva', '+15550981107', 95.0, 'None', 'ACTIVE'),
-('22222222-0000-0000-0000-000000000008', 'Sophia Taylor', 'STU-10A-02', '10', 'A', 'Robert Taylor', '+15550981108', 99.2, 'None', 'ACTIVE')
+('22222222-0000-0000-0000-000000000001', 'Aiden Sharma', 'BCA-2026-001', '3', 'Section 3rd Neo', 'Sunita Sharma', '+15550981101', 96.5, 'Mild pollen allergy', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000002', 'Chloe Zhao', 'BCA-2026-002', '3', 'Section 3rd Neo', 'Hao Zhao', '+15550981102', 98.0, 'None', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000003', 'Liam O''Connor', 'BCA-2026-003', '3', 'Section 3B1', 'Brigid O''Connor', '+15550981103', 74.2, 'Asthma inhaler in clinic', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000004', 'Maya Patel', 'BCA-2026-004', '3', 'Section 3B1', 'Karan Patel', '+15550981104', 92.5, 'None', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000005', 'Daniel Kim', 'BCA-2026-005', '3', 'Section 3B2', 'Grace Kim', '+15550981105', 78.4, 'None', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000006', 'Zara Mercer', 'BCA-2026-006', '3', 'Section 3B2', 'David Mercer', '+15550981106', 76.0, 'Nut allergy', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000007', 'Lucas Silva', 'BCA-2026-007', '5', 'Section 5th Neo', 'Camila Silva', '+15550981107', 95.0, 'None', 'ACTIVE'),
+('22222222-0000-0000-0000-000000000008', 'Sophia Taylor', 'BCA-2026-008', '5', 'Section 5th Neo', 'Robert Taylor', '+15550981108', 99.2, 'None', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 -- Maintenance Issues
 INSERT INTO public.maintenance_issues (id, reported_by_name, reported_by_role, title, description, location, category, priority, status, assigned_to_name, assigned_to_id, sms_sent, created_at) VALUES
-('33333333-0000-0000-0000-000000000001', 'Sarah Jenkins', 'TEACHER', 'Projector not working in Class 8A', 'The ceiling projector fails to power on and HDMI signal flickers constantly during lectures.', 'Class 8A, West Wing 2nd Floor', 'Projector', 'MEDIUM', 'PENDING', 'Rajesh Kumar (Facilities)', '11111111-0000-0000-0000-000000000003', true, NOW() - INTERVAL '45 minutes'),
+('33333333-0000-0000-0000-000000000001', 'Sarah Jenkins', 'TEACHER', 'Projector not working in BCA Lab 1', 'The ceiling projector fails to power on and HDMI signal flickers constantly during lectures.', 'BCA Lab 1, West Wing 2nd Floor', 'Projector', 'MEDIUM', 'PENDING', 'Rajesh Kumar (Facilities)', '11111111-0000-0000-0000-000000000003', true, NOW() - INTERVAL '45 minutes'),
 ('33333333-0000-0000-0000-000000000002', 'Marcus Chen', 'TEACHER', 'Water pipe leakage in Science Lab 2', 'Continuous drip under main chemistry washbasin causing puddle hazard on floor.', 'Science Block B, Room 204', 'Water Leakage', 'HIGH', 'IN_PROGRESS', 'Rajesh Kumar (Facilities)', '11111111-0000-0000-0000-000000000003', true, NOW() - INTERVAL '3 hours'),
 ('33333333-0000-0000-0000-000000000003', 'Elena Rostova', 'TEACHER', 'Wi-Fi Access Point offline in Library 2nd Floor', 'Mesh repeater node 4 lost power, preventing students from digital reference access.', 'Central Library Mezzanine', 'Internet Problem', 'MEDIUM', 'RESOLVED', 'Elena Rostova (IT)', '11111111-0000-0000-0000-000000000004', false, NOW() - INTERVAL '1 day')
 ON CONFLICT (id) DO NOTHING;
@@ -56,14 +56,14 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Notifications
 INSERT INTO public.notifications (id, title, message, type, related_type, related_id, read, created_at) VALUES
-('77777777-0000-0000-0000-000000000001', 'New Campus Issue Reported', 'Sarah Jenkins reported: Projector not working in Class 8A (Assigned to Maintenance).', 'WARNING', 'MAINTENANCE', '33333333-0000-0000-0000-000000000001', false, NOW() - INTERVAL '45 minutes'),
-('77777777-0000-0000-0000-000000000002', 'Leave Request Approved', 'Leave for Liam O''Connor (Class 8A) has been approved. Guardian SMS triggered.', 'SUCCESS', 'LEAVE', '55555555-0000-0000-0000-000000000002', false, NOW() - INTERVAL '4 hours'),
+('77777777-0000-0000-0000-000000000001', 'New Campus Issue Reported', 'Sarah Jenkins reported: Projector not working in BCA Lab 1 (Assigned to Maintenance).', 'WARNING', 'MAINTENANCE', '33333333-0000-0000-0000-000000000001', false, NOW() - INTERVAL '45 minutes'),
+('77777777-0000-0000-0000-000000000002', 'Leave Request Approved', 'Leave for Aiden Sharma (BCA 3rd Sem) has been approved. Guardian SMS triggered.', 'SUCCESS', 'LEAVE', '55555555-0000-0000-0000-000000000002', false, NOW() - INTERVAL '4 hours'),
 ('77777777-0000-0000-0000-000000000003', 'Urgent Maintenance Alert', 'Water leakage in Science Lab 2 marked High Priority. Maintenance Lead Rajesh Kumar on site.', 'URGENT', 'MAINTENANCE', '33333333-0000-0000-0000-000000000002', true, NOW() - INTERVAL '3 hours')
 ON CONFLICT (id) DO NOTHING;
 
 -- SMS Logs
 INSERT INTO public.sms_logs (id, recipient_phone, recipient_name, message, template_id, status, trigger_event, created_at) VALUES
-('88888888-0000-0000-0000-000000000001', '+15550192833', 'Rajesh Kumar', 'ALERT: New Medium priority issue assigned: Projector not working in Class 8A. Devora Campus Ops.', 'DEVORA_MNT_ALERT', 'DELIVERED', 'Maintenance Assignment', NOW() - INTERVAL '45 minutes'),
+('88888888-0000-0000-0000-000000000001', '+15550192833', 'Rajesh Kumar', 'ALERT: New Medium priority issue assigned: Projector not working in BCA Lab 1. Devora Campus Ops.', 'DEVORA_MNT_ALERT', 'DELIVERED', 'Maintenance Assignment', NOW() - INTERVAL '45 minutes'),
 ('88888888-0000-0000-0000-000000000002', '+15550981103', 'Brigid O''Connor', 'Devora School: Medical leave for Liam O''Connor has been APPROVED for 2 days. Get well soon.', 'DEVORA_LEAVE_APPROVED', 'DELIVERED', 'Leave Approval', NOW() - INTERVAL '4 hours')
 ON CONFLICT (id) DO NOTHING;
 

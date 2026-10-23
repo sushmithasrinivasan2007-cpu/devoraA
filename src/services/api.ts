@@ -550,10 +550,21 @@ export const api = {
   },
 
   // Timetable
-  getTimetable: async (class_grade?: string, section?: string): Promise<TimetableSlot[]> => {
+  getTimetable: async (
+    class_grade?: string,
+    section?: string,
+    day_of_week?: string,
+    course_id?: string,
+    semester_id?: string,
+    section_id?: string
+  ): Promise<TimetableSlot[]> => {
     const params = new URLSearchParams();
     if (class_grade) params.set('class_grade', class_grade);
     if (section) params.set('section', section);
+    if (day_of_week) params.set('day_of_week', day_of_week);
+    if (course_id) params.set('course_id', course_id);
+    if (semester_id) params.set('semester_id', semester_id);
+    if (section_id) params.set('section_id', section_id);
     const res = await fetch(`/api/timetable?${params.toString()}`);
     return res.json();
   },

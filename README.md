@@ -61,7 +61,7 @@ Devora AI is an enterprise-grade school operations platform that connects Admini
 The application includes a built-in **"Run Demo Story"** guided modal in the top header:
 
 1. **Role**: Switch to **Teacher** (Sarah Jenkins).
-2. **Report Issue**: Submit *"Projector not working in Class 8A"*.
+2. **Report Issue**: Submit *"Projector not working in BCA Lab 1"*.
 3. **AI Classification**: Autonomous extraction &mdash; Category: *Projector*, Priority: *Medium*, Routed to *Rajesh Kumar (Facilities)*.
 4. **Assignment & Alert**: In-app notification pushed and SMTP email dispatched to technician.
 5. **Technician Action**: Status changed to *In Progress*, then *Resolved*.

@@ -106,7 +106,7 @@ export class CampusDatabase {
         email: 's.jenkins@devora.edu',
         phone: '+15550192832',
         status: 'ACTIVE',
-        assigned_classes: ['8A', '8B']
+        assigned_classes: ['BCA 3rd Neo', 'BCA 3B1']
       },
       {
         id: 'usr-mnt-03',
@@ -137,7 +137,7 @@ export class CampusDatabase {
         email: 'm.chen@devora.edu',
         phone: '+15550192835',
         status: 'ACTIVE',
-        assigned_classes: ['10A']
+        assigned_classes: ['BCA 3B2', 'BCA 3B3']
       }
     ];
 
@@ -466,9 +466,9 @@ export class CampusDatabase {
         reported_by_name: 'Sarah Jenkins',
         reported_by_role: 'TEACHER',
         reported_by_email: 's.jenkins@devora.edu',
-        title: 'Projector not working in Class 8A',
+        title: 'Projector not working in BCA Lab 1',
         description: 'The ceiling projector fails to power on and HDMI signal flickers constantly during lectures.',
-        location: 'Class 8A, West Wing 2nd Floor',
+        location: 'BCA Lab 1, West Wing 2nd Floor',
         category: 'Projector',
         priority: 'MEDIUM',
         status: 'PENDING',
@@ -521,7 +521,7 @@ export class CampusDatabase {
     this.requests = [
       {
         id: 'req-001',
-        requester_id: 'stu-8a-01',
+        requester_id: 'stu-bca-0001',
         requester_name: 'Aiden Sharma',
         requester_role: 'STUDENT',
         request_type: 'Bonafide request',
@@ -538,7 +538,7 @@ export class CampusDatabase {
       },
       {
         id: 'req-002',
-        requester_id: 'stu-8a-02',
+        requester_id: 'stu-bca-0002',
         requester_name: 'Chloe Zhao',
         requester_role: 'STUDENT',
         request_type: 'ID card request',
@@ -550,7 +550,7 @@ export class CampusDatabase {
         assigned_department: 'Administration',
         assigned_to: 'Security Desk',
         status: 'RESOLVED',
-        resolution_notes: 'Replacement badge STU-8A-02 issued and handed to student.',
+        resolution_notes: 'Replacement badge BCA-2026-002 issued and handed to student.',
         created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
         updated_at: new Date(Date.now() - 4 * 3600000).toISOString()
       },
@@ -593,7 +593,7 @@ export class CampusDatabase {
       },
       {
         id: 'lev-002',
-        applicant_id: 'stu-8a-03',
+        applicant_id: 'stu-bca-0003',
         applicant_name: 'Liam O\'Connor',
         applicant_role: 'STUDENT',
         applicant_email: 'brigid.oc@example.com',
@@ -615,7 +615,7 @@ export class CampusDatabase {
       {
         id: 'notif-1',
         title: 'New Campus Issue Reported',
-        message: 'Sarah Jenkins reported: Projector not working in Class 8A (Assigned to Facilities).',
+        message: 'Sarah Jenkins reported: Projector not working in BCA Lab 1 (Assigned to Facilities).',
         type: 'WARNING',
         related_type: 'MAINTENANCE',
         related_id: 'mnt-001',
@@ -625,7 +625,7 @@ export class CampusDatabase {
       {
         id: 'notif-2',
         title: 'Leave Request Approved',
-        message: 'Leave for Liam O\'Connor (Class 8A) has been approved. Guardian Email notification sent.',
+        message: 'Leave for Aiden Sharma (BCA 3rd Sem) has been approved. Guardian Email notification sent.',
         type: 'SUCCESS',
         related_type: 'LEAVE',
         related_id: 'lev-002',
@@ -696,12 +696,137 @@ export class CampusDatabase {
       }
     ];
 
-    this.timetable = [
-      { id: 'tt-1', class_grade: '8', section: 'A', day_of_week: 'Monday', period: 1, time_range: '08:45 - 09:30', subject: 'Mathematics', teacher_name: 'Sarah Jenkins', room: 'Class 8A' },
-      { id: 'tt-2', class_grade: '8', section: 'A', day_of_week: 'Monday', period: 2, time_range: '09:35 - 10:20', subject: 'Physics', teacher_name: 'Marcus Chen', room: 'Lab 2' },
-      { id: 'tt-3', class_grade: '8', section: 'A', day_of_week: 'Monday', period: 3, time_range: '10:35 - 11:20', subject: 'Computer Science', teacher_name: 'Elena Rostova', room: 'IT Lab 1' },
-      { id: 'tt-4', class_grade: '8', section: 'A', day_of_week: 'Monday', period: 4, time_range: '11:25 - 12:10', subject: 'English Literature', teacher_name: 'Sarah Jenkins', room: 'Class 8A' }
+    this.timetable = this.generateBcaTimetable();
+  }
+
+  private generateBcaTimetable(): TimetableSlot[] {
+    const days: Array<'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday'> = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
     ];
+
+    const semesterConfigs: Record<number, {
+      courseId: string;
+      courseCode: string;
+      semId: string;
+      semName: string;
+      schedule: { period: number; time_range: string; subject: string; teacher_name: string; room: string }[];
+    }> = {
+      1: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-1',
+        semName: '1st Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Programming in C (BCA101)', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'Digital Electronics & Logic (BCA102)', teacher_name: 'Marcus Chen', room: 'Electronics Lab' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Discrete Mathematics (BCA103)', teacher_name: 'Elena Rostova', room: 'BCA Room 101' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Communicative English', teacher_name: 'Dr. Alistair Vance', room: 'Seminar Hall 1' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'C Programming Lab Workshop', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' }
+        ]
+      },
+      2: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-2',
+        semName: '2nd Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Data Structures in C (BCA201)', teacher_name: 'Marcus Chen', room: 'BCA Lab 2' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'OOP with C++ (BCA202)', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Computer Architecture (BCA203)', teacher_name: 'Elena Rostova', room: 'BCA Room 102' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Environmental Studies', teacher_name: 'Dr. Alistair Vance', room: 'Seminar Hall 1' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'Data Structures Lab Hands-on', teacher_name: 'Marcus Chen', room: 'BCA Lab 2' }
+        ]
+      },
+      3: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-3',
+        semName: '3rd Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Python Programming (BCA301)', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'Database Management Systems (BCA302)', teacher_name: 'Elena Rostova', room: 'IT Lab 1' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Operating Systems (BCA303)', teacher_name: 'Marcus Chen', room: 'BCA Room 201' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Computer Networks (BCA304)', teacher_name: 'Dr. Alistair Vance', room: 'BCA Room 201' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'Python & SQL Lab Session', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' }
+        ]
+      },
+      4: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-4',
+        semName: '4th Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Web Technologies & Frameworks (BCA401)', teacher_name: 'Elena Rostova', room: 'IT Lab 1' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'Software Engineering & Agile (BCA402)', teacher_name: 'Dr. Alistair Vance', room: 'BCA Room 202' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Java Programming (BCA403)', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 2' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Quantitative Aptitude & Logic', teacher_name: 'Marcus Chen', room: 'BCA Room 202' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'Full-Stack Web Dev Lab', teacher_name: 'Elena Rostova', room: 'IT Lab 1' }
+        ]
+      },
+      5: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-5',
+        semName: '5th Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Artificial Intelligence & ML (BCA501)', teacher_name: 'Elena Rostova', room: 'AI & Data Lab' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'Cloud Computing & DevOps (BCA502)', teacher_name: 'Marcus Chen', room: 'Cloud Computing Lab' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Mobile Application Development (BCA503)', teacher_name: 'Sarah Jenkins', room: 'BCA Lab 1' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Cyber Ethics & IP Law', teacher_name: 'Dr. Alistair Vance', room: 'Seminar Hall 1' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'AI Model Training Lab', teacher_name: 'Elena Rostova', room: 'AI & Data Lab' }
+        ]
+      },
+      6: {
+        courseId: 'crs-bca',
+        courseCode: 'BCA',
+        semId: 'sem-bca-6',
+        semName: '6th Semester',
+        schedule: [
+          { period: 1, time_range: '08:45 - 09:30', subject: 'Cyber Security & Cryptography (BCA601)', teacher_name: 'Elena Rostova', room: 'Security Lab' },
+          { period: 2, time_range: '09:35 - 10:20', subject: 'Big Data Analytics (BCA602)', teacher_name: 'Marcus Chen', room: 'AI & Data Lab' },
+          { period: 3, time_range: '10:35 - 11:20', subject: 'Major Capstone Project (BCA603)', teacher_name: 'Sarah Jenkins', room: 'Innovation Center' },
+          { period: 4, time_range: '11:25 - 12:10', subject: 'Cloud Architecture Seminar', teacher_name: 'Dr. Alistair Vance', room: 'Seminar Hall 1' },
+          { period: 5, time_range: '01:00 - 01:45', subject: 'Capstone Project Evaluation', teacher_name: 'Sarah Jenkins', room: 'Innovation Center' }
+        ]
+      }
+    };
+
+    const slots: TimetableSlot[] = [];
+    let slotIdCounter = 1;
+
+    [1, 2, 3, 4, 5, 6].forEach((semNum) => {
+      const semConfig = semesterConfigs[semNum];
+      const semSecs = this.sections.filter(sec => sec.semester_id === semConfig.semId);
+
+      semSecs.forEach((sec) => {
+        days.forEach((day, dayIdx) => {
+          const rotated = [...semConfig.schedule];
+          const shift = dayIdx % rotated.length;
+          const daySchedule = [...rotated.slice(shift), ...rotated.slice(0, shift)];
+
+          daySchedule.forEach((item, pIdx) => {
+            slots.push({
+              id: `tt-${slotIdCounter++}`,
+              course_id: semConfig.courseId,
+              course_code: semConfig.courseCode,
+              semester_id: semConfig.semId,
+              semester_name: semConfig.semName,
+              section_id: sec.id,
+              class_grade: String(semNum),
+              section: sec.name,
+              day_of_week: day,
+              period: pIdx + 1,
+              time_range: item.time_range,
+              subject: item.subject,
+              teacher_name: item.teacher_name,
+              room: item.room
+            });
+          });
+        });
+      });
+    });
+
+    return slots;
   }
 
   // Calculate dynamic metrics for operations brief
@@ -714,7 +839,7 @@ export class CampusDatabase {
     // Detect classes needing attention
     const classStats: Record<string, { total: number; absent: number }> = {};
     this.attendance.forEach(rec => {
-      const key = `Class ${rec.class_grade}${rec.section}`;
+      const key = `${rec.semester_name || (rec.class_grade ? `Sem ${rec.class_grade}` : 'Class')} ${rec.section}`;
       if (!classStats[key]) classStats[key] = { total: 0, absent: 0 };
       classStats[key].total += 1;
       if (rec.status === 'ABSENT') classStats[key].absent += 1;
@@ -727,7 +852,7 @@ export class CampusDatabase {
       }
     });
     if (classesNeedingAttention.length === 0) {
-      classesNeedingAttention.push('Class 8B (Attendance has dropped below 80% this week)');
+      classesNeedingAttention.push('BCA 3rd Semester Section 3B2 (Attendance has dropped below 80% this week)');
     }
 
     const openMaintenance = this.maintenance.filter(m => m.status !== 'RESOLVED');
@@ -739,7 +864,7 @@ export class CampusDatabase {
 
     const actionRecs = [
       `Review water pipe leakage in Science Lab 2 assigned to Rajesh Kumar.`,
-      `Verify absent follow-ups for Class 8B students with repeated absences.`,
+      `Verify absent follow-ups for BCA 3rd Semester Section 3B2 students with repeated absences.`,
       `Review pending 2-day medical leave request for Sarah Jenkins.`
     ];
 
