@@ -57,7 +57,7 @@ export const SmartRequestsModule: React.FC<SmartRequestsModuleProps> = ({
         description,
         location,
         request_type: reqType,
-        requester_name: currentRole === 'STUDENT' ? 'Aiden Sharma' : currentRole === 'TEACHER' ? 'Sarah Jenkins' : 'Campus Admin',
+        requester_name: currentRole === 'STUDENT' ? 'ABHISHEK R' : currentRole === 'TEACHER' ? 'Sarah Jenkins' : 'Campus Admin',
         requester_role: currentRole
       });
       setShowSubmitModal(false);

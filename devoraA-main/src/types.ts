@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
+export type Role = 'ADMIN' | 'TEACHER' | 'STUDENT';
 
 export interface User {
   id: string;
@@ -418,7 +418,7 @@ export interface Announcement {
   id: string;
   title: string;
   content: string;
-  target_audience: 'ALL' | 'TEACHERS' | 'STUDENTS' | 'PARENTS';
+  target_audience: 'ALL' | 'TEACHERS' | 'STUDENTS';
   priority: 'NORMAL' | 'URGENT';
   author_name: string;
   created_at: string;

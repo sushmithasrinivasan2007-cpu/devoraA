@@ -29,6 +29,13 @@ import {
 } from '../src/types';
 import { buildUnifiedStudentsDirectory } from './services/studentImporter';
 
+export interface UserCredential {
+  username: string;
+  password: string;
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT';
+  name: string;
+}
+
 // Database Store for Devora Campus Operations with Persistence
 export class CampusDatabase {
   public students: Student[] = [];
@@ -40,6 +47,12 @@ export class CampusDatabase {
   public notifications: NotificationItem[] = [];
   public emailLogs: EmailLog[] = [];
   public importValidationSummary: ImportValidationSummary | null = null;
+  public userCredentials: UserCredential[] = [
+    { username: 'admin@devora.edu', password: 'admin123', role: 'ADMIN', name: 'Dr. Alistair Vance' },
+    { username: 'teacher@devora.edu', password: 'teacher123', role: 'TEACHER', name: 'Sarah Jenkins' },
+    { username: 'student@devora.edu', password: 'student123', role: 'STUDENT', name: 'ABHISHEK R' },
+    { username: 'ajay@devora.edu', password: 'student123', role: 'STUDENT', name: 'AJAY PRASAD' }
+  ];
 
   // Academic Configuration & Dynamic Attendance Entities
   public courses: Course[] = [];
@@ -522,7 +535,7 @@ export class CampusDatabase {
       {
         id: 'req-001',
         requester_id: 'stu-bca-0001',
-        requester_name: 'Aiden Sharma',
+        requester_name: 'ABHISHEK R',
         requester_role: 'STUDENT',
         request_type: 'Bonafide request',
         title: 'Bonafide Certificate for National Science Olympiad registration',
@@ -539,7 +552,7 @@ export class CampusDatabase {
       {
         id: 'req-002',
         requester_id: 'stu-bca-0002',
-        requester_name: 'Chloe Zhao',
+        requester_name: 'AJAY PRASAD',
         requester_role: 'STUDENT',
         request_type: 'ID card request',
         title: 'Replacement ID Card - original lost during bus commute',
@@ -593,11 +606,11 @@ export class CampusDatabase {
       },
       {
         id: 'lev-002',
-        applicant_id: 'stu-bca-0003',
-        applicant_name: 'Liam O\'Connor',
+        applicant_id: 'stu-bca-0001',
+        applicant_name: 'ABHISHEK R',
         applicant_role: 'STUDENT',
-        applicant_email: 'brigid.oc@example.com',
-        applicant_phone: '+15550981103',
+        applicant_email: 'abhishek.r.1@devora.edu',
+        applicant_phone: '+91 9810000000',
         leave_type: 'Medical',
         start_date: todayStr,
         end_date: new Date(Date.now() + 1 * 86400000).toISOString().split('T')[0],
@@ -625,7 +638,7 @@ export class CampusDatabase {
       {
         id: 'notif-2',
         title: 'Leave Request Approved',
-        message: 'Leave for Aiden Sharma (BCA 3rd Sem) has been approved. Guardian Email notification sent.',
+        message: 'Leave for ABHISHEK R (BCA 1st Sem) has been approved. Email notification sent.',
         type: 'SUCCESS',
         related_type: 'LEAVE',
         related_id: 'lev-002',
@@ -897,7 +910,14 @@ export class CampusDatabase {
    * Ensures strict data privacy (student only gets their own records)
    */
   public getStudentAttendanceSummary(studentIdOrName: string): StudentAttendanceOverview | null {
-    const student = this.students.find(s => s.id === studentIdOrName || s.name === studentIdOrName || s.email === studentIdOrName);
+    const q = (studentIdOrName || '').trim().toLowerCase();
+    const student = this.students.find(s => 
+      s.id.toLowerCase() === q || 
+      s.name.toLowerCase() === q || 
+      (s.email && s.email.toLowerCase() === q) ||
+      (s.roll_number && s.roll_number.toLowerCase() === q) ||
+      (s.register_number && s.register_number.toLowerCase() === q)
+    ) || this.students[0];
     if (!student) return null;
 
     const studentEntries = this.attendanceEntries.filter(e => e.student_id === student.id);
@@ -1375,16 +1395,50 @@ export class CampusDatabase {
     return path.join(process.cwd(), 'database', 'campus_state.json');
   }
 
+  public getUserCredentials(): UserCredential[] {
+    return this.userCredentials;
+  }
+
+  public findUserCredential(username: string): UserCredential | undefined {
+    const q = username.trim().toLowerCase();
+    return this.userCredentials.find(u => u.username.toLowerCase() === q);
+  }
+
+  public setUserPassword(username: string, password: string, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', name?: string): UserCredential {
+    const q = username.trim().toLowerCase();
+    const existingIndex = this.userCredentials.findIndex(u => u.username.toLowerCase() === q);
+
+    if (existingIndex >= 0) {
+      this.userCredentials[existingIndex].password = password;
+      if (role) this.userCredentials[existingIndex].role = role;
+      if (name) this.userCredentials[existingIndex].name = name;
+      this.saveToFile();
+      return this.userCredentials[existingIndex];
+    } else {
+      const newCred: UserCredential = {
+        username: username.trim(),
+        password,
+        role: role || 'STUDENT',
+        name: name || username.split('@')[0]
+      };
+      this.userCredentials.push(newCred);
+      this.saveToFile();
+      return newCred;
+    }
+  }
+
   public saveToFile(): void {
     try {
       const data = {
         students: this.students,
+        staff: this.staff,
         attendanceSessions: this.attendanceSessions,
         attendanceEntries: this.attendanceEntries,
         attendance: this.attendance,
         teacherAssignments: this.teacherAssignments,
         attendanceSettings: this.attendanceSettings,
-        importValidationSummary: this.importValidationSummary
+        importValidationSummary: this.importValidationSummary,
+        userCredentials: this.userCredentials
       };
       const filePath = this.getStoreFilePath();
       const dir = path.dirname(filePath);
@@ -1403,6 +1457,7 @@ export class CampusDatabase {
         const data = JSON.parse(raw);
         if (Array.isArray(data.students) && data.students.length > 0) {
           this.students = data.students;
+          if (Array.isArray(data.staff) && data.staff.length > 0) this.staff = data.staff;
           if (Array.isArray(data.attendanceSessions)) this.attendanceSessions = data.attendanceSessions;
           if (Array.isArray(data.attendanceEntries)) this.attendanceEntries = data.attendanceEntries;
           if (Array.isArray(data.attendance)) this.attendance = data.attendance;
@@ -1411,6 +1466,14 @@ export class CampusDatabase {
           }
           if (data.attendanceSettings) this.attendanceSettings = data.attendanceSettings;
           if (data.importValidationSummary) this.importValidationSummary = data.importValidationSummary;
+          if (Array.isArray(data.userCredentials) && data.userCredentials.length > 0) {
+            // merge or assign loaded credentials with defaults
+            const credMap = new Map(this.userCredentials.map(c => [c.username.toLowerCase(), c]));
+            data.userCredentials.forEach((c: UserCredential) => {
+              credMap.set(c.username.toLowerCase(), c);
+            });
+            this.userCredentials = Array.from(credMap.values());
+          }
           console.log(`[CampusDatabase] Loaded ${this.students.length} students & ${this.attendanceSessions.length} attendance sessions from state file.`);
           return true;
         }

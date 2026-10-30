@@ -110,6 +110,30 @@ async function startServer() {
     res.json(db.staff);
   });
 
+  app.post("/api/staff", (req, res) => {
+    const { name, employee_id, role_title, department, email, phone, assigned_classes, password } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: "Staff name and email are required." });
+    }
+    const newStaff = {
+      id: `usr-tch-${Date.now()}`,
+      name: name.trim(),
+      employee_id: employee_id ? employee_id.trim() : `EMP-TCH-${Math.floor(10 + Math.random() * 90)}`,
+      role_title: role_title || 'Teacher',
+      department: department || 'Academics',
+      email: email.trim(),
+      phone: phone ? phone.trim() : '+15550192800',
+      status: 'ACTIVE' as const,
+      assigned_classes: assigned_classes || []
+    };
+    db.staff.push(newStaff);
+    if (password) {
+      db.setUserPassword(newStaff.email, password, 'TEACHER', newStaff.name);
+    }
+    db.saveToFile();
+    res.status(201).json(newStaff);
+  });
+
   // 7. Attendance API & AI Attendance Analysis
   app.get("/api/attendance", (req, res) => {
     const { class_grade, section, date } = req.query;
@@ -764,7 +788,7 @@ async function startServer() {
     const newReq = {
       id: `req-${Date.now()}`,
       requester_id: 'usr-gen',
-      requester_name: requester_name || 'Aiden Sharma',
+      requester_name: requester_name || 'ABHISHEK R',
       requester_role: requester_role || 'STUDENT',
       request_type: request_type || 'General request',
       title,
@@ -922,7 +946,150 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // 12. Email / SMTP Logs & Direct Test Dispatch
+  app.delete("/api/notifications", (req, res) => {
+    db.notifications = [];
+    res.json({ success: true, message: "All notifications cleared." });
+  });
+
+  // 12. Authentication, Password Management & Welcome Mail
+  app.get("/api/auth/credentials", (req, res) => {
+    res.json(db.getUserCredentials());
+  });
+
+  app.post("/api/auth/credentials", (req, res) => {
+    const { username, password, role, name } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required." });
+    }
+    const updated = db.setUserPassword(username, password, role, name);
+    db.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'Credentials Updated',
+      message: `Password updated for ${updated.name} (${updated.username}).`,
+      type: 'SUCCESS',
+      related_type: 'ANNOUNCEMENT',
+      read: false,
+      created_at: new Date().toISOString()
+    });
+    res.json({ success: true, credential: updated });
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email address is required." });
+    }
+    const targetEmail = email.trim().toLowerCase();
+    let cred = db.findUserCredential(targetEmail);
+
+    if (!cred) {
+      const staffMember = db.staff.find(s => s.email.toLowerCase() === targetEmail);
+      if (staffMember) {
+        cred = db.setUserPassword(staffMember.email, 'teacher123', 'TEACHER', staffMember.name);
+      } else {
+        const studentMember = db.students.find(s =>
+          (s.roll_number && s.roll_number.toLowerCase() === targetEmail) ||
+          (s.uucms_no && s.uucms_no.toLowerCase() === targetEmail) ||
+          (s.name.toLowerCase() === targetEmail)
+        );
+        if (studentMember) {
+          cred = db.setUserPassword(`${studentMember.roll_number.toLowerCase()}@devora.edu`, 'student123', 'STUDENT', studentMember.name);
+        }
+      }
+    }
+
+    if (!cred) {
+      cred = db.setUserPassword(targetEmail, 'devora2026', 'STUDENT', targetEmail.split('@')[0]);
+    }
+
+    const emailBody = `Dear ${cred.name},\n\nYou requested password recovery for your Devora AI Campus OS account.\n\nHere are your access credentials:\n• Portal: ${cred.role}\n• Username / Email: ${cred.username}\n• Password: ${cred.password}\n\nPlease log in at Devora Campus OS and change your password in account settings.\n\nBest regards,\nDevora Campus IT Operations`;
+
+    const emailResult = await dispatchEmail(
+      cred.username.includes('@') ? cred.username : `${cred.username}@devora.edu`,
+      'Devora Campus - Password Recovery & Access Credentials',
+      emailBody,
+      {
+        recipientName: cred.name,
+        triggerEvent: 'Password Reset'
+      }
+    );
+
+    db.emailLogs.unshift({
+      id: `email-${Date.now()}`,
+      recipient_email: cred.username,
+      recipient_name: cred.name,
+      subject: 'Devora Campus - Password Recovery & Access Credentials',
+      message: emailBody,
+      template_id: 'DEVORA_PASSWORD_RESET',
+      status: emailResult.status,
+      trigger_event: 'Password Reset',
+      created_at: new Date().toISOString()
+    });
+
+    db.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'Password Recovery Email Dispatched',
+      message: `Password reset credentials dispatched to ${cred.username}.`,
+      type: 'SUCCESS',
+      related_type: 'ANNOUNCEMENT',
+      read: false,
+      created_at: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      message: `Password recovery credentials have been dispatched to ${cred.username}.`,
+      credential: cred
+    });
+  });
+
+  app.post("/api/auth/login-welcome", async (req, res) => {
+    const { username, password, role, name } = req.body;
+    if (!username) {
+      return res.status(400).json({ error: "Username is required." });
+    }
+
+    const userEmail = username.includes('@') ? username : `${username}@devora.edu`;
+    const displayName = name || username.split('@')[0];
+
+    const welcomeBody = `Dear ${displayName},\n\nWelcome back to Devora AI Campus Management Platform!\n\nYou have successfully signed in to the ${role || 'Campus'} Portal.\n\nHere are your login session details:\n• Portal: ${role || 'General'}\n• Username / Email: ${username}\n• Password: ${password || '••••••••'}\n• Time: ${new Date().toLocaleString()}\n\nIf you did not authorize this login, please contact Campus Administration immediately.\n\nBest regards,\nDr. Alistair Vance\nCampus Director, Devora AI`;
+
+    const emailResult = await dispatchEmail(
+      userEmail,
+      'Welcome to Devora Campus - Login Credentials & Session Confirmation',
+      welcomeBody,
+      {
+        recipientName: displayName,
+        triggerEvent: 'Login Confirmation'
+      }
+    );
+
+    db.emailLogs.unshift({
+      id: `email-${Date.now()}`,
+      recipient_email: userEmail,
+      recipient_name: displayName,
+      subject: 'Welcome to Devora Campus - Login Credentials & Session Confirmation',
+      message: welcomeBody,
+      template_id: 'DEVORA_WELCOME_LOGIN',
+      status: emailResult.status,
+      trigger_event: 'Login Confirmation',
+      created_at: new Date().toISOString()
+    });
+
+    db.notifications.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'Welcome Mail Dispatched',
+      message: `Welcome credentials email sent to ${userEmail} (${displayName}).`,
+      type: 'SUCCESS',
+      related_type: 'ANNOUNCEMENT',
+      read: false,
+      created_at: new Date().toISOString()
+    });
+
+    res.json({ success: true, message: "Welcome email sent successfully." });
+  });
+
+  // 13. Email / SMTP Logs & Direct Test Dispatch
   app.get("/api/email/logs", (req, res) => {
     res.json(db.emailLogs);
   });

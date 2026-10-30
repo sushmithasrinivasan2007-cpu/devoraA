@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS public.email_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   recipient_email VARCHAR(255) NOT NULL,
   recipient_name VARCHAR(255),
+  recipient_phone VARCHAR(50),
   subject VARCHAR(255),
   message TEXT NOT NULL,
   template_id VARCHAR(100),
@@ -173,6 +174,11 @@ CREATE TABLE IF NOT EXISTS public.email_logs (
   response_payload TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Compatibility view for SMS/Email logs
+CREATE OR REPLACE VIEW public.sms_logs AS 
+SELECT id, recipient_phone, recipient_name, message, template_id, status, trigger_event, created_at 
+FROM public.email_logs;
 
 -- 12. Announcements Table
 CREATE TABLE IF NOT EXISTS public.announcements (
@@ -379,16 +385,88 @@ ALTER TABLE public.attendance_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_session_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_settings ENABLE ROW LEVEL SECURITY;
 
--- Standard RLS Policies: Admins can read/write all; Teachers read/update their domain; Students read personal
-CREATE POLICY "Admins full access on all tables" ON public.users FOR ALL USING (true);
-CREATE POLICY "Allow public read on announcements" ON public.announcements FOR SELECT USING (true);
-CREATE POLICY "Public read on academic structures" ON public.courses FOR SELECT USING (true);
-CREATE POLICY "Public read on academic years" ON public.academic_years FOR SELECT USING (true);
-CREATE POLICY "Public read on semesters" ON public.semesters FOR SELECT USING (true);
-CREATE POLICY "Public read on sections" ON public.sections FOR SELECT USING (true);
-CREATE POLICY "Public read on subjects" ON public.subjects FOR SELECT USING (true);
-CREATE POLICY "Admins full access on academic config" ON public.courses FOR ALL USING (true);
-CREATE POLICY "Teachers view their own assignments" ON public.teacher_subject_assignments FOR SELECT USING (true);
-CREATE POLICY "Teachers mark attendance for assigned classes" ON public.attendance_sessions FOR ALL USING (true);
-CREATE POLICY "Students view personal attendance" ON public.attendance_session_records FOR SELECT USING (true);
+-- Standard RLS Policies: Permit app read & write across sectors
+-- (DROP IF EXISTS ensures re-running the script will never throw error 42710)
+DROP POLICY IF EXISTS "Admins full access on all tables" ON public.users;
+DROP POLICY IF EXISTS "Full access on users" ON public.users;
+CREATE POLICY "Full access on users" ON public.users FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on students" ON public.students;
+CREATE POLICY "Full access on students" ON public.students FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on staff" ON public.staff;
+CREATE POLICY "Full access on staff" ON public.staff FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on classes" ON public.classes;
+CREATE POLICY "Full access on classes" ON public.classes FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read on academic structures" ON public.courses;
+DROP POLICY IF EXISTS "Admins full access on academic config" ON public.courses;
+DROP POLICY IF EXISTS "Full access on courses" ON public.courses;
+CREATE POLICY "Full access on courses" ON public.courses FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read on academic years" ON public.academic_years;
+DROP POLICY IF EXISTS "Full access on academic_years" ON public.academic_years;
+CREATE POLICY "Full access on academic_years" ON public.academic_years FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read on semesters" ON public.semesters;
+DROP POLICY IF EXISTS "Full access on semesters" ON public.semesters;
+CREATE POLICY "Full access on semesters" ON public.semesters FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read on sections" ON public.sections;
+DROP POLICY IF EXISTS "Full access on sections" ON public.sections;
+CREATE POLICY "Full access on sections" ON public.sections FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Public read on subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Full access on subjects" ON public.subjects;
+CREATE POLICY "Full access on subjects" ON public.subjects FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Teachers view their own assignments" ON public.teacher_subject_assignments;
+DROP POLICY IF EXISTS "Full access on teacher_assignments" ON public.teacher_subject_assignments;
+CREATE POLICY "Full access on teacher_assignments" ON public.teacher_subject_assignments FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on attendance" ON public.attendance;
+CREATE POLICY "Full access on attendance" ON public.attendance FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Teachers mark attendance for assigned classes" ON public.attendance_sessions;
+DROP POLICY IF EXISTS "Full access on attendance_sessions" ON public.attendance_sessions;
+CREATE POLICY "Full access on attendance_sessions" ON public.attendance_sessions FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Students view personal attendance" ON public.attendance_session_records;
+DROP POLICY IF EXISTS "Full access on attendance_session_records" ON public.attendance_session_records;
+CREATE POLICY "Full access on attendance_session_records" ON public.attendance_session_records FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on attendance_settings" ON public.attendance_settings;
+CREATE POLICY "Full access on attendance_settings" ON public.attendance_settings FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on maintenance_issues" ON public.maintenance_issues;
+CREATE POLICY "Full access on maintenance_issues" ON public.maintenance_issues FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on requests" ON public.requests;
+CREATE POLICY "Full access on requests" ON public.requests FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on leave_requests" ON public.leave_requests;
+CREATE POLICY "Full access on leave_requests" ON public.leave_requests FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow public read on announcements" ON public.announcements;
+DROP POLICY IF EXISTS "Full access on announcements" ON public.announcements;
+CREATE POLICY "Full access on announcements" ON public.announcements FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on timetable" ON public.timetable;
+CREATE POLICY "Full access on timetable" ON public.timetable FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on notifications" ON public.notifications;
+CREATE POLICY "Full access on notifications" ON public.notifications FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on notification_preferences" ON public.notification_preferences;
+CREATE POLICY "Full access on notification_preferences" ON public.notification_preferences FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on email_logs" ON public.email_logs;
+CREATE POLICY "Full access on email_logs" ON public.email_logs FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on ai_insights" ON public.ai_insights;
+CREATE POLICY "Full access on ai_insights" ON public.ai_insights FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Full access on audit_logs" ON public.audit_logs;
+CREATE POLICY "Full access on audit_logs" ON public.audit_logs FOR ALL USING (true);
 

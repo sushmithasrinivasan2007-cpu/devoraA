@@ -30,7 +30,20 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('+15550');
   const [medicalNotes, setMedicalNotes] = useState('');
+  const [studentPassword, setStudentPassword] = useState('student123');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Add staff form state
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [staffName, setStaffName] = useState('');
+  const [staffEmployeeId, setStaffEmployeeId] = useState('');
+  const [staffRoleTitle, setStaffRoleTitle] = useState('Teacher');
+  const [staffDepartment, setStaffDepartment] = useState('Academics');
+  const [staffEmail, setStaffEmail] = useState('');
+  const [staffPhone, setStaffPhone] = useState('+15550192000');
+  const [staffAssignedClasses, setStaffAssignedClasses] = useState('BCA 1st Sem');
+  const [staffPassword, setStaffPassword] = useState('teacher123');
+  const [isStaffSubmitting, setIsStaffSubmitting] = useState(false);
 
   const [programFilter, setProgramFilter] = useState<'ALL' | 'BCA' | 'BCA+DA' | 'BCOM'>('ALL');
   const [semesterFilter, setSemesterFilter] = useState<string>('ALL');
@@ -78,8 +91,10 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
         section,
         guardian_name: guardianName,
         guardian_phone: guardianPhone,
-        medical_notes: medicalNotes
-      });
+        medical_notes: medicalNotes,
+        password: studentPassword,
+        email: `${rollNumber.toLowerCase()}@devora.edu`
+      } as any);
       setShowAddStudent(false);
       setName('');
       setRollNumber('');
@@ -89,6 +104,33 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
       console.error(err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!staffName || !staffEmail) return;
+    setIsStaffSubmitting(true);
+    try {
+      await api.createStaff({
+        name: staffName,
+        employee_id: staffEmployeeId || `EMP-TCH-${Math.floor(10 + Math.random() * 90)}`,
+        role_title: staffRoleTitle as any,
+        department: staffDepartment as any,
+        email: staffEmail,
+        phone: staffPhone,
+        assigned_classes: staffAssignedClasses ? staffAssignedClasses.split(',').map(c => c.trim()) : [],
+        password: staffPassword
+      });
+      setShowAddStaff(false);
+      setStaffName('');
+      setStaffEmail('');
+      setStaffEmployeeId('');
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsStaffSubmitting(false);
     }
   };
 
@@ -130,7 +172,7 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
             </button>
           </div>
 
-          {activeTab === 'STUDENTS' && (
+          {activeTab === 'STUDENTS' ? (
             <button
               type="button"
               id="btn-add-student"
@@ -139,6 +181,16 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
             >
               <Plus className="w-4 h-4" />
               <span>Enroll Student</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              id="btn-add-staff"
+              onClick={() => setShowAddStaff(true)}
+              className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-[#6B1E2B] hover:bg-[#42121C] text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Faculty / Staff</span>
             </button>
           )}
         </div>
@@ -429,6 +481,161 @@ export const DirectoryModule: React.FC<DirectoryModuleProps> = ({
                   className="px-5 py-2.5 rounded-xl text-xs font-mono font-bold bg-[#6B1E2B] hover:bg-[#42121C] text-white shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'Enrolling...' : 'Save Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Add Staff Modal */}
+      {showAddStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#FFF8EC] border border-[#6B1E2B]/20 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#6B1E2B]/10 pb-3">
+              <h2 className="text-lg font-bold text-[#2B2020] flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#6B1E2B]" />
+                <span>Add Faculty / Staff Member</span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowAddStaff(false)}
+                className="text-[#756565] hover:text-[#2B2020] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStaff} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffName}
+                    onChange={(e) => setStaffName(e.target.value)}
+                    placeholder="e.g. Prof. David Miller"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all placeholder:text-[#9A8989]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    value={staffEmployeeId}
+                    onChange={(e) => setStaffEmployeeId(e.target.value)}
+                    placeholder="Auto-generated if empty"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all placeholder:text-[#9A8989]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Role / Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffRoleTitle}
+                    onChange={(e) => setStaffRoleTitle(e.target.value)}
+                    placeholder="e.g. Teacher, Program Head"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffDepartment}
+                    onChange={(e) => setStaffDepartment(e.target.value)}
+                    placeholder="e.g. Academics, IT"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={staffEmail}
+                    onChange={(e) => setStaffEmail(e.target.value)}
+                    placeholder="staff@devora.edu"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all placeholder:text-[#9A8989]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffPhone}
+                    onChange={(e) => setStaffPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Assigned Classes
+                  </label>
+                  <input
+                    type="text"
+                    value={staffAssignedClasses}
+                    onChange={(e) => setStaffAssignedClasses(e.target.value)}
+                    placeholder="e.g. BCA 1st Sem, BCA 3B1"
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#6B1E2B] uppercase tracking-wider mb-1">
+                    Initial Password
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffPassword}
+                    onChange={(e) => setStaffPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#F3EBDD]/60 border border-[#6B1E2B]/20 text-[#2B2020] focus:border-[#6B1E2B] focus:ring-2 focus:ring-[#6B1E2B]/10 outline-none font-mono text-sm transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#6B1E2B]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStaff(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-mono text-[#756565] hover:text-[#2B2020] font-medium transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isStaffSubmitting}
+                  className="px-5 py-2.5 rounded-xl text-xs font-mono font-bold bg-[#6B1E2B] hover:bg-[#42121C] text-white shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isStaffSubmitting ? 'Adding...' : 'Save Staff Member'}
                 </button>
               </div>
             </form>

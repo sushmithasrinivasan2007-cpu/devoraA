@@ -124,6 +124,15 @@ export const api = {
     const res = await fetch('/api/staff');
     return res.json();
   },
+  createStaff: async (staffData: Partial<Staff> & { password?: string }): Promise<Staff> => {
+    const res = await fetch('/api/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(staffData)
+    });
+    if (!res.ok) throw new Error('Failed to create staff member');
+    return res.json();
+  },
 
   // Attendance
   getAttendance: async (class_grade?: string, section?: string, date?: string) => {
@@ -490,6 +499,42 @@ export const api = {
   },
   markAllNotificationsRead: async () => {
     const res = await fetch('/api/notifications/read-all', { method: 'POST' });
+    return res.json();
+  },
+  clearNotifications: async () => {
+    const res = await fetch('/api/notifications', { method: 'DELETE' });
+    return res.json();
+  },
+
+  // Auth, Credentials, and Welcome Email
+  getCredentials: async () => {
+    const res = await fetch('/api/auth/credentials');
+    return res.json();
+  },
+  saveUserPassword: async (data: { username: string; password: string; role?: string; name?: string }) => {
+    const res = await fetch('/api/auth/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update user password');
+    return res.json();
+  },
+  forgotPassword: async (email: string) => {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) throw new Error('Failed to process password recovery');
+    return res.json();
+  },
+  sendLoginWelcome: async (data: { username: string; password?: string; role: string; name: string }) => {
+    const res = await fetch('/api/auth/login-welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
     return res.json();
   },
 

@@ -30,11 +30,32 @@ export function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loggedInName, setLoggedInName] = useState('');
 
-  const handleLogin = (role: Role, name: string) => {
+  const handleLogin = async (role: Role, name: string, username?: string, password?: string) => {
     setCurrentRole(role);
     setLoggedInName(name);
     setIsLoggedIn(true);
     setCurrentTab('dashboard');
+
+    // Trigger welcome mail with login credentials to user
+    if (username) {
+      try {
+        await api.sendLoginWelcome({
+          username,
+          password: password || '••••••••',
+          role,
+          name
+        });
+        // refresh notifications & logs
+        const [notifRes, smsRes] = await Promise.all([
+          api.getNotifications(),
+          api.getSMSLogs()
+        ]);
+        setNotifications(notifRes);
+        setSmsLogs(smsRes);
+      } catch (err) {
+        console.error('Failed to dispatch welcome email:', err);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -125,6 +146,15 @@ export function App() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
+  const handleClearAllNotifications = async () => {
+    setNotifications([]);
+    try {
+      await api.clearNotifications();
+    } catch (e) {
+      console.error("Failed to clear notifications:", e);
+    }
+  };
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -139,12 +169,17 @@ export function App() {
       {/* Top Header */}
       <Header
         currentRole={currentRole}
-        onRoleChange={(role) => setCurrentRole(role)}
+        onRoleChange={(role) => {
+          // Strictly prevent Admin from accessing Student portal
+          if (currentRole === 'ADMIN' && role === 'STUDENT') return;
+          setCurrentRole(role);
+        }}
         loggedInName={loggedInName}
         onLogout={handleLogout}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
         onMarkAllRead={handleMarkAllNotificationsRead}
+        onClearAllNotifications={handleClearAllNotifications}
         onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
       />
 
@@ -185,6 +220,11 @@ export function App() {
                         onNavigateTab={(tab) => setCurrentTab(tab)}
                         loggedInName={loggedInName}
                         currentRole={currentRole}
+                        studentsCount={students.length}
+                        staffCount={staff.length}
+                        onOpenAddStudent={() => setCurrentTab('directory')}
+                        onOpenAddStaff={() => setCurrentTab('directory')}
+                        onRefresh={loadData}
                       />
 
                       {/* Analytics Charts */}
@@ -286,14 +326,13 @@ export function App() {
                     />
                   )}
 
-                  {/* STUDENT / PARENT Dashboard */}
-                  {(currentRole === 'STUDENT' || currentRole === 'PARENT') && dailyBrief && (
+                  {/* STUDENT Dashboard */}
+                  {currentRole === 'STUDENT' && dailyBrief && (
                     <StudentDashboard
                       brief={dailyBrief}
                       loggedInName={loggedInName}
                       students={students}
                       leaveRequests={leaveRequests}
-                      requests={requests}
                       announcements={announcements}
                       onNavigateTab={(tab) => setCurrentTab(tab)}
                     />
@@ -325,8 +364,8 @@ export function App() {
                 </div>
               )}
 
-              {/* TAB 5: SMART REQUESTS */}
-              {currentTab === 'requests' && (
+              {/* TAB 5: SMART REQUESTS (Admin & Teacher Only) */}
+              {currentTab === 'requests' && currentRole !== 'STUDENT' && (
                 <div className="animate-in fade-in duration-150">
                   <SmartRequestsModule
                     requests={requests}
@@ -342,6 +381,7 @@ export function App() {
                   <LeaveModule
                     leaves={leaveRequests}
                     currentRole={currentRole}
+                    loggedInName={loggedInName}
                     onRefresh={loadData}
                   />
                 </div>

@@ -42,15 +42,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'Operations Brief',
+      label: 'Home',
       icon: LayoutDashboard,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER', 'STUDENT']
     },
     {
       id: 'maintenance',
       label: 'Campus Facilities',
       icon: Wrench,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER', 'STUDENT']
     },
     {
       id: 'attendance',
@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'requests',
       label: 'Smart Requests',
       icon: FileText,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER']
     },
     {
       id: 'leave',
@@ -80,11 +80,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'timetable',
       label: 'Timetable & Notices',
       icon: Calendar,
-      roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']
+      roles: ['ADMIN', 'TEACHER', 'STUDENT']
     },
     {
       id: 'sms',
-      label: 'SMTP Mail Gateway',
+      label: 'Mails',
       icon: Mail,
       roles: ['ADMIN'],
       badge: unreadCount > 0 ? unreadCount : undefined

@@ -724,15 +724,17 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({
           )}
 
           {/* Excel Import & Live Directory Modal Trigger */}
-          <button
-            type="button"
-            onClick={handleOpenImportModal}
-            className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 cursor-pointer bg-[#5F8F68]/15 text-[#3D6B46] border border-[#5F8F68]/30 hover:bg-[#5F8F68]/25 shadow-xs"
-            title="Inspect Excel Integration Breakdown and Re-sync"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-[#3D6B46]" />
-            <span>Excel Directory (765)</span>
-          </button>
+          {currentRole !== 'STUDENT' && (
+            <button
+              type="button"
+              onClick={handleOpenImportModal}
+              className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center gap-2 cursor-pointer bg-[#5F8F68]/15 text-[#3D6B46] border border-[#5F8F68]/30 hover:bg-[#5F8F68]/25 shadow-xs"
+              title="Inspect Excel Integration Breakdown and Re-sync"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-[#3D6B46]" />
+              <span>Excel Directory (765)</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.local
+.env.*
+!.env.example
+devoraA-main/.env
+devoraA-main/.env.local
+devoraA-main/.env.*
+!devoraA-main/.env.example
+devoraA-main/node_modules/
+devoraA-main/dist/
+.DS_Store

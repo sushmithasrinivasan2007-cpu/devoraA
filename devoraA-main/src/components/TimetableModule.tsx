@@ -33,7 +33,7 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
   // New announcement state
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeContent, setNoticeContent] = useState('');
-  const [audience, setAudience] = useState<'ALL' | 'TEACHERS' | 'STUDENTS' | 'PARENTS'>('ALL');
+  const [audience, setAudience] = useState<'ALL' | 'TEACHERS' | 'STUDENTS'>('ALL');
   const [priority, setPriority] = useState<'NORMAL' | 'URGENT'>('NORMAL');
   const [emailBroadcast, setEmailBroadcast] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -155,14 +155,16 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowNoticeModal(true)}
-          className="px-4 py-2.5 rounded-xl font-mono text-xs font-bold tracking-wider uppercase bg-[#6B1E2B] hover:bg-[#42121C] text-white transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Broadcast Notice</span>
-        </button>
+        {(currentRole === 'ADMIN' || currentRole === 'TEACHER') && (
+          <button
+            type="button"
+            onClick={() => setShowNoticeModal(true)}
+            className="px-4 py-2.5 rounded-xl font-mono text-xs font-bold tracking-wider uppercase bg-[#6B1E2B] hover:bg-[#42121C] text-white transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Broadcast Notice</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -395,7 +397,6 @@ export const TimetableModule: React.FC<TimetableModuleProps> = ({
                     <option value="ALL">All Campus</option>
                     <option value="TEACHERS">Faculty Only</option>
                     <option value="STUDENTS">Students</option>
-                    <option value="PARENTS">Parents</option>
                   </select>
                 </div>
 
