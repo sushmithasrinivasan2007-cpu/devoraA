@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'leave',
-      label: 'Leave Approvals',
+      label: currentRole === 'STUDENT' ? 'My Leave Requests' : 'Leave Approvals',
       icon: CalendarCheck,
       roles: ['ADMIN', 'TEACHER', 'STUDENT']
     },

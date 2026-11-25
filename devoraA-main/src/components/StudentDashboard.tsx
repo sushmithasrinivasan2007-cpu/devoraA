@@ -93,7 +93,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           Home
         </h2>
         <p className="text-sm text-[#756565] font-medium">
-          Track your attendance, personal leave approvals, and campus class notices.
+          Track your attendance, personal leave requests, and campus class notices.
         </p>
 
         {/* 3 Pillars Grid (Smart Requests removed) */}
@@ -142,7 +142,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             className="p-4 rounded-xl bg-[#FFF8EC]/90 border border-[#6B1E2B]/12 hover:border-[#6B1E2B]/40 hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer group backdrop-blur-md"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono font-bold tracking-wider text-[#756565] uppercase">My Leaves</span>
+              <span className="text-xs font-mono font-bold tracking-wider text-[#756565] uppercase">My Leave Requests</span>
               <div className="p-1.5 rounded-lg bg-[#6B1E2B]/10 text-[#6B1E2B] group-hover:scale-110 transition-transform">
                 <CalendarCheck className="w-4 h-4" />
               </div>

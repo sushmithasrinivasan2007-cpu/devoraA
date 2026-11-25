@@ -84,14 +84,14 @@ export const LeaveModule: React.FC<LeaveModuleProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#2B2020] tracking-tight flex items-center gap-2.5">
-            <span>{currentRole === 'STUDENT' ? 'My Leave Applications' : 'Leave Approvals & Management'}</span>
+            <span>{currentRole === 'STUDENT' ? 'My Leave Requests' : 'Leave Approvals & Management'}</span>
             <span className="text-xs font-mono font-bold text-[#3D6B46] bg-[#5F8F68]/15 px-2.5 py-0.5 rounded-full border border-[#5F8F68]/30">
               Active Workflow
             </span>
           </h1>
           <p className="text-sm text-[#756565] mt-1 font-sans">
             {currentRole === 'STUDENT'
-              ? 'Submit personal leave applications and track official approval responses.'
+              ? 'Submit personal leave requests and track official approval responses.'
               : 'Submit and review faculty & student leave requests with automated email dispatch.'}
           </p>
         </div>

@@ -9,5 +9,8 @@
     "start": "npm --prefix devoraA-main run start",
     "preview": "npm --prefix devoraA-main run preview",
     "lint": "npm --prefix devoraA-main run lint"
+  },
+  "dependencies": {
+    "openai": "^7.50.0"
   }
 }
